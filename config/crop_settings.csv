@@ -1,0 +1,4 @@
+crop,crop_display,crop_icon,crop_unit,crop_unit_abbr,yield_default,yield_min,yield_max,price_default,price_min,price_max,aerial_application_cost,ds_low,ds_low_label,ds_high,ds_high_label,ds_slider_min,ds_slider_max,ds_slider_default
+corn,Corn,🌽,bushels per acre,bu/ac,180,0,500,5.00,0,15,13.63,0.01,Low (1%),0.05,High (5%),0,50,5
+soybean,Soybean,🫘,bushels per acre,bu/ac,50,0,100,12.00,0,25,13.63,0.02,Low (2%),0.10,High (10%),0,50,5
+alfalfa,Alfalfa,🌿,tons per acre,ton/ac,5,0,12,200.00,0,400,13.63,0.03,Low (3%),0.15,High (15%),0,50,10

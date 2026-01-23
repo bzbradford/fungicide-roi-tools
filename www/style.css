@@ -1,0 +1,77 @@
+/* Enhanced Inputs Styling */
+
+.enhanced-input-container > .form-group {
+  margin-bottom: unset;
+}
+
+.enhanced-input-header {
+  display: inline-flex;
+  justify-content: space-between;
+  align-items: end;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.enhanced-input-label {
+  font-weight: 500;
+  /*font-size: 0.875rem;*/
+  color: var(--bs-body-color, #212529);
+}
+
+.enhanced-input-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.enhanced-input-icon {
+  color: var(--bs-secondary, #6c757d);
+  cursor: pointer;
+  transition: color 0.15s ease-in-out;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+.enhanced-input-icon:hover {
+  color: var(--bs-primary, #0d6efd);
+}
+
+.enhanced-input-icon.reset-icon {
+  background: none;
+  text-decoration: none;
+}
+
+.enhanced-input-icon.reset-icon:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.enhanced-input-icon.info-icon {
+  cursor: help;
+}
+
+/* Hide default Shiny labels since we use our own */
+.enhanced-input-container .control-label,
+.enhanced-input-container > .shiny-input-container > label {
+  display: none !important;
+}
+
+.enhanced-input-container .shiny-input-container {
+  width: 100% !important;
+}
+
+/* Radio buttons adjustments */
+.enhanced-input-container .shiny-input-radiogroup {
+  margin-top: 0.25rem;
+}
+
+/* Slider adjustments */
+.enhanced-input-container .irs {
+  margin-top: 0.25rem;
+}
+
+/* Checkbox alignment */
+.enhanced-input-container .form-check {
+  margin-top: 0.25rem;
+}
