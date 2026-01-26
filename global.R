@@ -275,6 +275,7 @@ calculate_breakeven_prob <- function(
   mean(benefit_draws > threshold)
 }
 
+# example
 if (FALSE) {
   calculate_breakeven_prob(
     b_0 = 0.044,

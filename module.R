@@ -9,6 +9,7 @@ crop_ui <- function(id, programs, opts) {
     sidebar = sidebar(
       title = NULL,
       width = 450,
+      open = TRUE,
 
       ## Yield and price ----
       card(
