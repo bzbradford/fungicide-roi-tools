@@ -75,3 +75,42 @@
 .enhanced-input-container .form-check {
   margin-top: 0.25rem;
 }
+
+
+/* --- Empty State Styling for Numeric Inputs --- */
+
+/* Required field when empty - light red background */
+.enhanced-input-empty-required {
+  background-color: #fee2e2 !important; /* Light red - similar to Bootstrap danger-subtle */
+  border-color: #f87171 !important;     /* Slightly darker red border */
+}
+
+/* Optional field when empty - light grey background */
+.enhanced-input-empty-optional {
+  background-color: #f3f4f6 !important; /* Light grey */
+  border-color: #d1d5db !important;     /* Grey border */
+}
+
+/* Invalid value (out of range) - same as required empty */
+.enhanced-input-invalid {
+  background-color: #fee2e2 !important;
+  border-color: #f87171 !important;
+}
+
+/* Ensure placeholder text is visible on colored backgrounds */
+.enhanced-input-empty-required::placeholder,
+.enhanced-input-invalid::placeholder {
+  color: #991b1b; /* Dark red for contrast */
+  opacity: 0.7;
+}
+
+.enhanced-input-empty-optional::placeholder {
+  color: #6b7280; /* Grey for contrast */
+  opacity: 0.7;
+}
+
+/* Smooth transition when state changes */
+.enhanced-numeric-validation input[type="number"],
+.enhanced-input-container input[type="number"] {
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}

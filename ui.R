@@ -17,21 +17,21 @@ ui <- page_navbar(
 
   # Corn
   nav_panel(
-    title = paste("🌽 Corn"),
+    title = "Corn (Tar Spot)",
     value = "corn",
-    corn_ui()
+    crop_ui("corn", corn_programs, OPTS$corn)
   ),
 
   # Soybean
   nav_panel(
-    title = paste("🫘 Soybean"),
+    title = "Soybean (White Mold)",
     value = "soybean",
-    p("Coming soon")
+    crop_ui("soy", soy_programs, OPTS$soy)
   ),
 
   # Alfalfa
   nav_panel(
-    title = paste("🌿 Alfalfa"),
+    title = paste("Alfalfa"),
     value = "alfalfa",
     p("Coming soon")
   ),
@@ -45,37 +45,7 @@ ui <- page_navbar(
     card(
       card_header("About This Calculator"),
       card_body(
-        h4("Fungicide ROI Calculator"),
-        p(
-          "This tool helps farmers and agronomists evaluate the economic potential of fungicide applications for field crops."
-        ),
-
-        h5("How to Use"),
-        tags$ol(
-          tags$li("Select your crop using the tabs at the top"),
-          tags$li("Enter your expected yield and sale price"),
-          tags$li("Select the anticipated disease severity level"),
-          tags$li("Adjust treatment costs if different from defaults"),
-          tags$li("Review the results in the chart and data table")
-        ),
-
-        h5("Interpreting Results"),
-        tags$ul(
-          tags$li(
-            "Programs are ranked by expected net benefit (highest first)"
-          ),
-          tags$li("Blue points indicate the top 3 recommended programs"),
-          tags$li("Error bars show the 95% confidence interval"),
-          tags$li("Negative values (shaded area) indicate expected loss")
-        ),
-
-        h5("Data Sources"),
-        p(
-          "Economic parameters are derived from multi-year, multi-location field trials conducted across the Midwest."
-        ),
-
-        hr(),
-        p(class = "text-muted", "Version 2.0 | Built with R Shiny and bslib")
+        includeMarkdown("data/about.md")
       )
     )
   )

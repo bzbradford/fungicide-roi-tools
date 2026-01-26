@@ -77,8 +77,12 @@ dots2env <- function(dots, env) {
   env_bind(env, !!!list_flatten(dots))
 }
 
-# --- Enhanced Numeric Input ---
+# --- Enhanced Numeric Input (Custom Binding) ---
 
+#' @param required Logical or NULL. If TRUE, empty input shows red background.
+#'   If FALSE, empty input shows grey background. If NULL (default), no special
+#'   empty-state styling is applied.
+#' @param placeholder Character string to display when input is empty.
 enhanced_numeric_input <- function(
   inputId,
   ...,
@@ -88,11 +92,23 @@ enhanced_numeric_input <- function(
   max = NA,
   step = NA,
   width = NULL,
+  placeholder = NULL,
+  required = NULL,
   info = NULL,
   show_reset = TRUE,
   reset_tooltip = paste("Reset to", value)
 ) {
   env_bind(current_env(), !!!list_flatten(list(...)))
+
+  info <- paste(
+    c(
+      info,
+      if (!is.na(min) | !is.na(max)) {
+        sprintf("Valid values: %s to %s", min, max)
+      }
+    ),
+    collapse = ". "
+  )
 
   header <- .build_input_header(
     inputId,
@@ -103,14 +119,43 @@ enhanced_numeric_input <- function(
     value
   )
 
-  input_el <- numericInput(
-    inputId = inputId,
-    label = NULL,
-    value = value,
-    min = min,
-    max = max,
-    step = step,
-    width = "100%"
+  # Build the input element manually (no Shiny numericInput)
+  input_attrs <- list(
+    id = inputId,
+    type = "number",
+    class = "enhanced-numeric-input form-control",
+    title = info,
+    `data-default-value` = if (!is.null(value)) value else ""
+  )
+
+  # Add value if provided
+  if (!is.null(value)) {
+    input_attrs$value <- value
+  }
+
+  # Add optional attributes
+  if (!is.na(min)) {
+    input_attrs$min <- min
+  }
+  if (!is.na(max)) {
+    input_attrs$max <- max
+  }
+  if (!is.na(step)) {
+    input_attrs$step <- step
+  }
+  if (!is.null(placeholder)) {
+    input_attrs$placeholder <- placeholder
+  }
+
+  # Add validation data attributes
+  if (!is.null(required)) {
+    input_attrs$`data-required` <- tolower(as.character(required))
+  }
+
+  input_el <- tags$div(
+    class = "enhanced-numeric-wrapper",
+    style = "width: 100%;",
+    do.call(tags$input, input_attrs)
   )
 
   .wrap_input(header, input_el, width)

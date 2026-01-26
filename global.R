@@ -1,23 +1,25 @@
 # Fungicide ROI app
 
-library(rlang)
-library(tidyverse)
-library(shiny)
-library(bslib)
-library(bsicons)
-library(plotly)
-library(DT)
+suppressPackageStartupMessages({
+  library(rlang)
+  library(tidyverse)
+  library(markdown)
+  library(shiny)
+  library(bslib)
+  library(bsicons)
+  library(plotly)
+  library(DT)
+})
 
 # renv will record these
 if (FALSE) {
-  library(styler)
-  library(miniUI)
+  library(air)
 }
 
 # renv::clean()
 # renv::snapshot()
 
-source("corn.R")
+source("module.R")
 source("enhanced_inputs.R")
 
 
@@ -28,43 +30,103 @@ source("enhanced_inputs.R")
 # readRDS("corn_app/fung_models_df.rds") %>%
 #   write_csv("corn_models_df.csv")
 
+# Functions ---------------------------------------------------------------
+
+# message and print an object to the console for testing
+echo <- function(x) {
+  message(deparse(substitute(x)), " <", paste(class(x), collapse = ", "), ">")
+  print(x)
+}
+
+
 # Setup -------------------------------------------------------------------
 
-crop_settings <- read_csv("config/crop_settings.csv", show_col_types = FALSE)
-# crop_settings$crop_icon
+corn_programs <- read_csv("data/corn_programs.csv", show_col_types = FALSE)
+soy_programs <- read_csv("data/soybean_programs.csv", show_col_types = FALSE)
 
-corn_programs <- read_csv("config/corn_programs.csv", show_col_types = FALSE)
+crop_config <-
+  function(
+    crop_name,
+    title,
+    yield_input,
+    price_input,
+    disease_severity_choices,
+    disease_severity_slider,
+    appl_cost_input
+  ) {
+    as.list(environment())
+  }
 
-OPTS <- lst(
-  # disease severity
-  corn_ds_choices = list(
-    "Low (1%)" = .01,
-    "High (5%)" = .05,
-    "Custom" = "custom"
+OPTS <- list(
+  corn = crop_config(
+    crop_name = "Corn",
+    title = "Fungicide ROI Calculator for Tar Spot of Corn",
+    # yield_units = "bu/ac",
+    yield_input = list(
+      value = 180,
+      min = 1,
+      max = 400,
+      step = 1
+    ),
+    price_input = list(
+      value = 5,
+      min = 0,
+      max = 10
+    ),
+    disease_severity_choices = list(
+      "Low (1%)" = .01,
+      "High (5%)" = .05,
+      "Custom" = "custom"
+    ),
+    disease_severity_slider = list(
+      value = 5,
+      min = 0,
+      max = 50,
+      step = 1
+    ),
+    appl_cost_input = list(
+      value = 10,
+      min = 0,
+      max = 50
+    )
   ),
-  corn_ds_slider = list(
-    value = 5,
-    min = 0,
-    max = 50,
-    step = 1
-  ),
-  corn_yield = list(
-    value = 180,
-    min = 1,
-    max = 500,
-    step = 1
-  ),
-  corn_price = list(
-    value = 5,
-    min = 0,
-    max = 10
-  ),
-  corn_appl_cost = list(
-    value = 10,
-    min = 0,
-    max = 100
-  ),
+  soy = crop_config(
+    crop_name = "Soybean",
+    title = "Fungicide ROI Calculator for White Mold of Soybean",
+    # yield_units = "bu/ac",
+    yield_input = list(
+      value = 40,
+      min = 1,
+      max = 80,
+      step = 1
+    ),
+    price_input = list(
+      value = 12,
+      min = 0,
+      max = 18,
+      step = .01
+    ),
+    disease_severity_choices = list(
+      "Low (5%)" = .05,
+      "High (30%)" = .30,
+      "Custom" = "custom"
+    ),
+    disease_severity_slider = list(
+      value = 5,
+      min = 0,
+      max = 50,
+      step = 1
+    ),
+    appl_cost_input = list(
+      value = 10,
+      min = 0,
+      max = 50
+    )
+  )
 )
+
+# for autocomplete
+opts <- OPTS[[1]]
 
 
 # Economics --------------------------------------------------------------------
@@ -247,22 +309,25 @@ calculate_all_metrics <- function(
   disease_severity,
   appl_cost
 ) {
+  # echo(costs)
+  # echo(appl_cost)
+
   # Filter to active programs and compute total costs
+  # when a user clears a cost field the cost is NA and we exclude it
   results <- programs_df |>
     filter(enabled) |>
+    mutate(product_cost = costs[as.character(program_id)]) |>
+    filter(!is.na(product_cost)) |>
     mutate(
-      user_cost = costs[as.character(program_id)],
-      total_cost = user_cost + appl_cost
-    ) |>
-    # Filter out programs with NA or zero cost
-    filter(!is.na(total_cost), total_cost > 0)
+      application_cost = appl_cost * n_appl,
+      total_cost = product_cost + application_cost
+    )
 
   if (nrow(results) == 0) {
     return(results)
   }
 
-  # Calculate net benefits (returns 3 columns via tibble unpacking)
-  results <- results |>
+  results |>
     rowwise() |>
     mutate(
       calculate_net_benefit(
@@ -277,14 +342,7 @@ calculate_all_metrics <- function(
         price = price,
         disease_severity = disease_severity,
         treatment_cost = total_cost
-      )
-    ) |>
-    ungroup()
-
-  # Calculate breakeven probability (must be separate due to MC simulation)
-  results <- results |>
-    rowwise() |>
-    mutate(
+      ),
       breakeven_prob = calculate_breakeven_prob(
         b_0,
         b_1,
@@ -295,13 +353,7 @@ calculate_all_metrics <- function(
         price = price,
         disease_severity = disease_severity,
         treatment_cost = total_cost
-      )
-    ) |>
-    ungroup()
-
-  # Add derived metrics and round for display
-  results |>
-    mutate(
+      ),
       breakeven_cost = exp_net_benefit + total_cost,
       # Round for display
       across(
@@ -315,6 +367,7 @@ calculate_all_metrics <- function(
       ),
       breakeven_prob = round(breakeven_prob, 3)
     ) |>
+    ungroup() |>
     arrange(desc(exp_net_benefit))
 }
 
@@ -350,10 +403,10 @@ COLORS <- list(
 #' Create the main expected net benefit plot
 #'
 #' @param results_df Data frame from calculate_all_metrics()
-#' @param crop_display Display name for the crop (used in title)
+#' @param crop_name Display name for the crop (used in title)
 #' @param top_n Number of top programs to highlight (default 3)
 #' @return plotly object
-create_benefit_plot <- function(results_df, crop_display, top_n = 3) {
+create_benefit_plot <- function(results_df, crop_name, top_n = 3) {
   if (nrow(results_df) == 0) {
     # Return empty plot with message
     return(
@@ -435,7 +488,7 @@ create_benefit_plot <- function(results_df, crop_display, top_n = 3) {
       title = list(
         text = sprintf(
           "Expected Net Benefit by Fungicide Program (%s)",
-          crop_display
+          crop_name
         ),
         font = list(size = 16)
       ),
@@ -558,9 +611,9 @@ if (FALSE) {
 #' Useful when there are many programs.
 #'
 #' @param results_df Data frame from calculate_all_metrics()
-#' @param crop_display Display name for the crop
+#' @param crop_name Display name for the crop
 #' @return plotly object
-create_vertical_bar_plot <- function(results_df, crop_display) {
+create_vertical_bar_plot <- function(results_df, crop_name) {
   if (nrow(results_df) == 0) {
     return(plotly::plot_ly() |> plotly::layout(title = "No data"))
   }
@@ -596,7 +649,7 @@ create_vertical_bar_plot <- function(results_df, crop_display) {
       )
     ) |>
     plotly::layout(
-      title = sprintf("Expected Net Benefit (%s)", crop_display),
+      title = sprintf("Expected Net Benefit (%s)", crop_name),
       xaxis = list(
         title = "",
         tickangle = -45
