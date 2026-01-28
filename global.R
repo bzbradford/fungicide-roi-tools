@@ -27,7 +27,7 @@ source("enhanced_inputs.R")
 
 # readRDS("corn_app/beta_params.rds")
 # readRDS("corn_app/fung_models.rds")
-# readRDS("corn_app/fung_models_df.rds") %>%
+# readRDS("corn_app/fung_models_df.rds") |>
 #   write_csv("corn_models_df.csv")
 
 # Functions ---------------------------------------------------------------
@@ -382,7 +382,8 @@ if (FALSE) {
     price = 5,
     disease_severity = 0.05,
     appl_cost = 10
-  )
+  ) |>
+    glimpse()
 }
 
 
@@ -401,7 +402,10 @@ COLORS <- list(
   background = "#F5F5F5"
 )
 
+
+## Standard plot ----
 #' Create the main expected net benefit plot
+#' Expected benefit on X, program name on Y
 #'
 #' @param results_df Data frame from calculate_all_metrics()
 #' @param crop_name Display name for the crop (used in title)
@@ -548,8 +552,8 @@ if (FALSE) {
 }
 
 
+## Fuel gauge ----
 #' Create a summary card plot showing key metrics
-#'
 #' Optional visualization showing top program recommendation.
 #'
 #' @param results_df Data frame from calculate_all_metrics()
@@ -606,8 +610,7 @@ if (FALSE) {
 }
 
 
-#' Create comparison bar chart (alternative visualization)
-#'
+## Vertical bar chart ----
 #' Shows programs as vertical bars instead of horizontal.
 #' Useful when there are many programs.
 #'
@@ -686,4 +689,232 @@ if (FALSE) {
     appl_cost = 10
   ) |>
     create_vertical_bar_plot("Corn")
+}
+
+## Cost vs benefit plot ----
+#' Scatter plot with program cost on X and expected benefit on Y
+create_cost_benefit_plot <- function(df) {
+  req(nrow(df) > 0)
+
+  # Define color palette
+  plot_colors <- list(
+    high_profit = "#0072B2", # blue
+    profitable = "#56B4E9", # sky
+    marginal = "#E69F00", # orange
+    loss = "#D55E00", # red
+    bg_green = "rgba(0, 158, 115, 0.03)",
+    bg_red = "rgba(213, 94, 0, 0.03)"
+  )
+
+  # Prepare data
+  df_plot <- df |>
+    mutate(
+      # Profit category
+      profit_category = case_when(
+        exp_net_benefit > 10 ~ "High Profit (>$10)",
+        exp_net_benefit > 0 ~ "Profitable ($0-$10)",
+        exp_net_benefit > -10 ~ "Marginal (-$10-$0)",
+        TRUE ~ "Loss (<-$10)"
+      ),
+      profit_category = factor(
+        profit_category,
+        levels = c(
+          "High Profit (>$10)",
+          "Profitable ($0-$10)",
+          "Marginal (-$10-$0)",
+          "Loss (<-$10)"
+        )
+      ),
+      # Color mapping
+      point_color = case_when(
+        exp_net_benefit > 10 ~ plot_colors$high_profit,
+        exp_net_benefit > 0 ~ plot_colors$profitable,
+        exp_net_benefit > -10 ~ plot_colors$marginal,
+        TRUE ~ plot_colors$loss
+      ),
+      # Size scaling (map breakeven_prob to reasonable point sizes)
+      point_size = scales::rescale(breakeven_prob, to = c(12, 40)),
+      # Label for plot
+      label = paste0(program_name, "<br>", application_rate),
+      # Hover text
+      hover_text = paste0(
+        "<b>",
+        program_name,
+        " ",
+        application_rate,
+        "</b><br>",
+        "Total Cost: $",
+        round(total_cost, 2),
+        "<br>",
+        "Expected Benefit: $",
+        round(exp_net_benefit, 2),
+        "<br>",
+        "Breakeven Prob: ",
+        scales::percent(breakeven_prob, accuracy = 0.1),
+        "<br>",
+        "95% CI: $",
+        round(exp_net_benefit_low, 2),
+        " to $",
+        round(exp_net_benefit_high, 2)
+      )
+    )
+
+  # Calculate axis ranges
+  x_range <- range(df_plot$total_cost, na.rm = TRUE)
+  y_range <- range(df_plot$exp_net_benefit, na.rm = TRUE)
+  x_pad <- diff(x_range) * 0.15
+  y_pad <- diff(y_range) * 0.15
+
+  # Create plot
+  plot_ly() |>
+    # # Add error bars for confidence intervals
+    # add_trace(
+    #   data = df_plot,
+    #   x = ~total_cost,
+    #   y = ~exp_net_benefit,
+    #   type = "scatter",
+    #   mode = "markers",
+    #   error_y = list(
+    #     type = "data",
+    #     symmetric = FALSE,
+    #     array = ~ (exp_net_benefit_high - exp_net_benefit),
+    #     arrayminus = ~ (exp_net_benefit - exp_net_benefit_low),
+    #     color = "rgba(100, 100, 100, 0.4)",
+    #     thickness = 1,
+    #     width = 4
+    #   ),
+    #   marker = list(size = 0, opacity = 0),
+    #   hoverinfo = "skip",
+    #   showlegend = FALSE
+    # ) |>
+    # Add points
+    add_trace(
+      data = df_plot,
+      x = ~total_cost,
+      y = ~exp_net_benefit,
+      type = "scatter",
+      mode = "markers+text",
+      marker = list(
+        size = ~point_size,
+        color = ~point_color,
+        line = list(color = "white", width = 2),
+        opacity = 0.85
+      ),
+      text = ~label,
+      textposition = "top center",
+      textfont = list(size = 10),
+      hovertext = ~hover_text,
+      hoverinfo = "text",
+      showlegend = FALSE
+    ) |>
+    # Layout
+    layout(
+      title = list(
+        text = "<b>Cost vs. Expected Net Benefit</b><br><sup>Point size = breakeven probability | Bars = 95% CI</sup>",
+        x = 0.02,
+        xanchor = "left"
+      ),
+      xaxis = list(
+        title = "Total Cost per Acre (Product + Application)",
+        tickprefix = "$",
+        range = c(x_range[1] - x_pad, x_range[2] + x_pad),
+        gridcolor = "rgba(200, 200, 200, 0.3)",
+        zeroline = FALSE
+      ),
+      yaxis = list(
+        title = "Expected Net Benefit per Acre",
+        tickprefix = "$",
+        range = c(y_range[1] - y_pad, y_range[2] + y_pad),
+        gridcolor = "rgba(200, 200, 200, 0.3)",
+        zeroline = FALSE
+      ),
+      # Horizontal line at y=0 (breakeven)
+      shapes = list(
+        list(
+          type = "line",
+          x0 = 0,
+          x1 = 1,
+          xref = "paper",
+          y0 = 0,
+          y1 = 0,
+          yref = "y",
+          line = list(color = "grey40", width = 1.5, dash = "dash")
+        ),
+        # Green background for profit zone
+        list(
+          type = "rect",
+          x0 = 0,
+          x1 = 1,
+          xref = "paper",
+          y0 = 0,
+          y1 = 1e6,
+          yref = "y",
+          fillcolor = plot_colors$bg_green,
+          line = list(width = 0),
+          layer = "below"
+        ),
+        # Red background for loss zone
+        list(
+          type = "rect",
+          x0 = 0,
+          x1 = 1,
+          xref = "paper",
+          y0 = -1e6,
+          y1 = 0,
+          yref = "y",
+          fillcolor = plot_colors$bg_red,
+          line = list(width = 0),
+          layer = "below"
+        )
+      ),
+      # Annotations for zones
+      annotations = list(
+        list(
+          x = 0.02,
+          y = 0.98,
+          xref = "paper",
+          yref = "paper",
+          text = "Profitable",
+          showarrow = FALSE,
+          font = list(color = "rgba(0, 128, 0, 0.5)", size = 14),
+          xanchor = "left",
+          yanchor = "top"
+        ),
+        list(
+          x = 0.02,
+          y = 0.02,
+          xref = "paper",
+          yref = "paper",
+          text = "Unprofitable",
+          showarrow = FALSE,
+          font = list(color = "rgba(200, 0, 0, 0.5)", size = 14),
+          xanchor = "left",
+          yanchor = "bottom"
+        )
+      ),
+      hoverlabel = list(
+        bgcolor = "white",
+        bordercolor = "gray",
+        font = list(size = 12)
+      ),
+      margin = list(t = 80, b = 60, l = 70, r = 20)
+    ) |>
+    config(
+      displayModeBar = TRUE,
+      modeBarButtonsToRemove = c("lasso2d", "select2d", "autoScale2d"),
+      displaylogo = FALSE
+    )
+}
+
+# examples
+if (FALSE) {
+  calculate_all_metrics(
+    programs_df = corn_programs,
+    costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
+    yield = 180,
+    price = 5,
+    disease_severity = 0.05,
+    appl_cost = 10
+  ) |>
+    create_cost_benefit_plot()
 }

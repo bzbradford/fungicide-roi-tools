@@ -69,46 +69,63 @@ crop_ui <- function(id, programs, opts) {
     ),
 
     # Main content ----
-
-    navset_card_tab(
+    rlang::exec(
+      navset_card_tab,
       id = ns("results_tabs"),
       full_screen = TRUE,
-
-      # Chart tab
-      nav_panel(
-        title = "Chart 1",
-        icon = bsicons::bs_icon("bar-chart-fill"),
-        plotlyOutput(ns("plot"), height = "500px")
-      ),
-
-      nav_panel(
-        title = "Chart 2",
-        icon = bsicons::bs_icon("bar-chart-fill"),
-        plotlyOutput(ns("plot2"), height = "500px")
-      ),
-
-      nav_panel(
-        title = "Chart 3",
-        icon = bsicons::bs_icon("bar-chart-fill"),
-        plotlyOutput(ns("plot3"), height = "500px")
-      ),
-
-      # Table tab
-      nav_panel(
-        title = "Data Table",
-        icon = bsicons::bs_icon("table"),
-        DT::DTOutput(ns("table"))
-      ),
-
-      # Methodology tab
-      # nav_panel(
-      #   title = "Methodology",
-      #   icon = bsicons::bs_icon("info-circle"),
-      #   card_body(
-      #     includeMarkdown("data/methodology.md")
-      #   )
-      # )
+      !!!c(
+        # plots
+        lapply(1:4, function(i) {
+          nav_panel(
+            title = paste("Chart", i),
+            icon = bsicons::bs_icon("bar-chart-fill"),
+            plotlyOutput(ns(paste0("plot", i)), height = "500px")
+          )
+        }),
+        # table
+        list(
+          nav_panel(
+            title = "Data Table",
+            icon = bsicons::bs_icon("table"),
+            DT::DTOutput(ns("table"))
+          )
+        )
+      )
     )
+
+    # navset_card_tab(
+    #   id = ns("results_tabs"),
+    #   full_screen = TRUE,
+    #
+    #   # Chart tabs
+    #   nav_panel(
+    #     title = "Chart 1",
+    #     icon = bsicons::bs_icon("bar-chart-fill"),
+    #     plotlyOutput(ns("plot1"), height = "500px")
+    #   ),
+    #   nav_panel(
+    #     title = "Chart 2",
+    #     icon = bsicons::bs_icon("bar-chart-fill"),
+    #     plotlyOutput(ns("plot2"), height = "500px")
+    #   ),
+    #   nav_panel(
+    #     title = "Chart 3",
+    #     icon = bsicons::bs_icon("bar-chart-fill"),
+    #     plotlyOutput(ns("plot3"), height = "500px")
+    #   ),
+    #   nav_panel(
+    #     title = "Chart 4",
+    #     icon = bsicons::bs_icon("bar-chart-fill"),
+    #     plotlyOutput(ns("plot4"), height = "500px")
+    #   ),
+    #
+    #   # Table tab
+    #   nav_panel(
+    #     title = "Data Table",
+    #     icon = bsicons::bs_icon("table"),
+    #     DT::DTOutput(ns("table"))
+    #   )
+    # )
   )
 }
 
@@ -259,19 +276,25 @@ crop_server <- function(id, programs, opts) {
 
     # Plots ----
 
-    output$plot <- plotly::renderPlotly({
+    output$plot1 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
-      create_benefit_plot(df, opts$crop_name)
+      create_cost_benefit_plot(df)
     })
 
     output$plot2 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
-      create_summary_gauge(df)
+      create_benefit_plot(df, opts$crop_name)
     })
 
     output$plot3 <- plotly::renderPlotly({
+      df <- results()
+      req(nrow(df) > 0)
+      create_summary_gauge(df)
+    })
+
+    output$plot4 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
       create_vertical_bar_plot(df, opts$crop_name)
