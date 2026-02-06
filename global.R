@@ -1,5 +1,7 @@
 # Fungicide ROI app
 
+# Dependencies ----
+
 suppressPackageStartupMessages({
   library(rlang)
   library(tidyverse)
@@ -9,6 +11,7 @@ suppressPackageStartupMessages({
   library(bsicons)
   library(plotly)
   library(DT)
+  library(mvtnorm) # for alfalfa
 })
 
 # renv will record these
@@ -16,19 +19,18 @@ if (FALSE) {
   library(air)
 }
 
+
+# Dev ----
+
 # renv::clean()
 # renv::snapshot()
 
+# Modules ----
+
 source("module.R")
+source("alfalfa_module.R")
 source("enhanced_inputs.R")
 
-
-# old data structures
-
-# readRDS("corn_app/beta_params.rds")
-# readRDS("corn_app/fung_models.rds")
-# readRDS("corn_app/fung_models_df.rds") |>
-#   write_csv("corn_models_df.csv")
 
 # Functions ---------------------------------------------------------------
 
@@ -43,6 +45,10 @@ echo <- function(x) {
 
 corn_programs <- read_csv("data/corn_programs.csv", show_col_types = FALSE)
 soy_programs <- read_csv("data/soybean_programs.csv", show_col_types = FALSE)
+alfalfa_programs <- read_csv(
+  "data/alfalfa_programs.csv",
+  show_col_types = FALSE
+)
 
 crop_config <-
   function(
@@ -107,7 +113,7 @@ OPTS <- list(
       step = .01
     ),
     disease_severity_choices = list(
-      "Low (5%)" = .05,
+      "Low (15%)" = .15,
       "High (30%)" = .30,
       "Custom" = "custom"
     ),

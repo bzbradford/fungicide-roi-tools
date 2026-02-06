@@ -33,7 +33,7 @@ ui <- page_navbar(
   nav_panel(
     title = paste("Alfalfa"),
     value = "alfalfa",
-    p("Coming soon")
+    alfalfa_ui("alfalfa", alfalfa_programs)
   ),
 
   # add other crop tabs here #
