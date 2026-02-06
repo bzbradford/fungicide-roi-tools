@@ -4,14 +4,15 @@
 crop_ui <- function(id, programs, opts) {
   ns <- NS(id)
 
+  # layout_sidebar ----
   layout_sidebar(
-    # Sidebar ----
+    ## sidebar ----
     sidebar = sidebar(
       title = NULL,
       width = 450,
       open = TRUE,
 
-      ## Yield and price ----
+      # Yield/price/disease
       card(
         card_title("Yield and Disease Pressure"),
         card_body(
@@ -59,7 +60,7 @@ crop_ui <- function(id, programs, opts) {
         )
       ),
 
-      ## Treatment costs ----
+      # Treatment costs
       card(
         card_title(" Treatment Costs ($/acre)"),
         card_body(
@@ -68,64 +69,40 @@ crop_ui <- function(id, programs, opts) {
       )
     ),
 
-    # Main content ----
-    rlang::exec(
-      navset_card_tab,
+    ## main ----
+    navset_card_tab(
       id = ns("results_tabs"),
       full_screen = TRUE,
-      !!!c(
-        # plots
-        lapply(1:4, function(i) {
-          nav_panel(
-            title = paste("Chart", i),
-            icon = bsicons::bs_icon("bar-chart-fill"),
-            plotlyOutput(ns(paste0("plot", i)), height = "500px")
-          )
-        }),
-        # table
-        list(
-          nav_panel(
-            title = "Data Table",
-            icon = bsicons::bs_icon("table"),
-            DT::DTOutput(ns("table"))
-          )
-        )
+
+      # Chart tabs
+      nav_panel(
+        title = "Chart 1",
+        icon = bsicons::bs_icon("bar-chart-fill"),
+        plotlyOutput(ns("plot1"), height = "500px")
+      ),
+      nav_panel(
+        title = "Chart 2",
+        icon = bsicons::bs_icon("bar-chart-fill"),
+        plotlyOutput(ns("plot2"), height = "500px")
+      ),
+      nav_panel(
+        title = "Chart 3",
+        icon = bsicons::bs_icon("bar-chart-fill"),
+        plotlyOutput(ns("plot3"), height = "500px")
+      ),
+      nav_panel(
+        title = "Chart 4",
+        icon = bsicons::bs_icon("bar-chart-fill"),
+        plotlyOutput(ns("plot4"), height = "500px")
+      ),
+
+      # Table tab
+      nav_panel(
+        title = "Data Table",
+        icon = bsicons::bs_icon("table"),
+        DT::DTOutput(ns("table"))
       )
     )
-
-    # navset_card_tab(
-    #   id = ns("results_tabs"),
-    #   full_screen = TRUE,
-    #
-    #   # Chart tabs
-    #   nav_panel(
-    #     title = "Chart 1",
-    #     icon = bsicons::bs_icon("bar-chart-fill"),
-    #     plotlyOutput(ns("plot1"), height = "500px")
-    #   ),
-    #   nav_panel(
-    #     title = "Chart 2",
-    #     icon = bsicons::bs_icon("bar-chart-fill"),
-    #     plotlyOutput(ns("plot2"), height = "500px")
-    #   ),
-    #   nav_panel(
-    #     title = "Chart 3",
-    #     icon = bsicons::bs_icon("bar-chart-fill"),
-    #     plotlyOutput(ns("plot3"), height = "500px")
-    #   ),
-    #   nav_panel(
-    #     title = "Chart 4",
-    #     icon = bsicons::bs_icon("bar-chart-fill"),
-    #     plotlyOutput(ns("plot4"), height = "500px")
-    #   ),
-    #
-    #   # Table tab
-    #   nav_panel(
-    #     title = "Data Table",
-    #     icon = bsicons::bs_icon("table"),
-    #     DT::DTOutput(ns("table"))
-    #   )
-    # )
   )
 }
 
@@ -168,63 +145,7 @@ crop_server <- function(id, programs, opts) {
 
     output$costs_ui <- renderUI({
       rv$reset_costs # will regen ui if this changes
-
-      tagList(
-        # base application cost
-        enhanced_numeric_input(
-          inputId = ns("appl_cost"),
-          label = paste("Base application cost"),
-          info = "Cost per acre to apply, added to all costs",
-          opts$appl_cost_input,
-          required = TRUE,
-          placeholder = "Enter a valid application cost"
-        ),
-
-        # product costs
-        div(
-          style = "
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-              align-items: end;
-              gap: 0.5rem;
-              font-size: small;
-            ",
-          id = ns("cost_grid"),
-          lapply(seq_len(nrow(programs)), function(i) {
-            program <- slice(programs, i)
-            enhanced_numeric_input(
-              inputId = ns(paste0("cost_", program$program_id)),
-              label = sprintf(
-                "%s (%s)",
-                program$program_name,
-                program$application_rate
-              ),
-              required = FALSE,
-              placeholder = "Excluded",
-              value = program$default_cost,
-              min = 0,
-              max = 200,
-              step = 0.01
-            )
-          })
-        ),
-
-        # reset
-        actionButton(
-          inputId = ns("reset_costs"),
-          label = "Reset all costs"
-        ),
-
-        # hidden input that blocks calculations until the ui is ready
-        div(
-          style = "display: none;",
-          checkboxInput(
-            inputId = ns("ready"),
-            label = "Ready",
-            value = TRUE
-          )
-        )
-      )
+      build_costs_ui(programs, ns)
     })
 
     ## reset button handler ----
@@ -248,8 +169,8 @@ crop_server <- function(id, programs, opts) {
     results <- reactive({
       yield <- input$yield
       price <- input$price
-      appl_cost <- input$appl_cost
       ds <- disease_severity()
+      appl_cost <- input$appl_cost
       current_costs <- costs()
 
       # check required inputs
