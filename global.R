@@ -25,13 +25,6 @@ if (FALSE) {
 # renv::clean()
 # renv::snapshot()
 
-# Modules ----
-
-source("module.R")
-source("alfalfa_module.R")
-source("enhanced_inputs.R")
-
-
 # Functions ---------------------------------------------------------------
 
 # message and print an object to the console for testing
@@ -39,6 +32,8 @@ echo <- function(x) {
   message(deparse(substitute(x)), " <", paste(class(x), collapse = ", "), ">")
   print(x)
 }
+
+source("enhanced_inputs.R")
 
 
 # Setup -------------------------------------------------------------------
@@ -67,7 +62,6 @@ OPTS <- list(
   corn = crop_config(
     crop_name = "Corn",
     title = "Fungicide ROI Calculator for Tar Spot of Corn",
-    # yield_units = "bu/ac",
     yield_input = list(
       value = 180,
       min = 1,
@@ -89,17 +83,11 @@ OPTS <- list(
       min = 0,
       max = 50,
       step = 1
-    ),
-    appl_cost_input = list(
-      value = 10,
-      min = 0,
-      max = 50
     )
   ),
   soy = crop_config(
     crop_name = "Soybean",
     title = "Fungicide ROI Calculator for White Mold of Soybean",
-    # yield_units = "bu/ac",
     yield_input = list(
       value = 40,
       min = 1,
@@ -122,11 +110,6 @@ OPTS <- list(
       min = 0,
       max = 50,
       step = 1
-    ),
-    appl_cost_input = list(
-      value = 10,
-      min = 0,
-      max = 50
     )
   )
 )
@@ -135,7 +118,7 @@ OPTS <- list(
 opts <- OPTS[[1]]
 
 
-# Economics --------------------------------------------------------------------
+# Economics functions ----------------------------------------------------------
 #
 # Core economic calculations for fungicide ROI analysis.
 # These are pure functions that can be tested independently in the console.
@@ -393,6 +376,283 @@ if (FALSE) {
 }
 
 
+# Alfalfa functions ------------------------------------------------------------
+
+#' Reconstruct 4x4 symmetric covariance matrix from 10 upper-triangle CSV columns
+#' Parameter order: [Intercept, defoliation_difference, duration40, rfq_effect_size]
+build_cov_matrix <- function(row) {
+  matrix(
+    c(
+      row$cov_1_1,
+      row$cov_1_2,
+      row$cov_1_3,
+      row$cov_1_4,
+      row$cov_1_2,
+      row$cov_2_2,
+      row$cov_2_3,
+      row$cov_2_4,
+      row$cov_1_3,
+      row$cov_2_3,
+      row$cov_3_3,
+      row$cov_3_4,
+      row$cov_1_4,
+      row$cov_2_4,
+      row$cov_3_4,
+      row$cov_4_4
+    ),
+    nrow = 4,
+    byrow = TRUE
+  )
+}
+
+#' Calculate net benefit with delta method CIs for one alfalfa fungicide
+#'
+#' @param hay_price Hay price in $/ton
+#' @param defoliation Defoliation level (0-28)
+#' @param theta_defoliation Theta for defoliation
+#' @param rfq Alfalfa RFQ value
+#' @param theta_rfq Theta for RFQ
+#' @param duration_dummy 0 for 30-day, 1 for 40-day cutting
+#' @param cost Treatment cost $/ac
+#' @param params Named or positional vector: [Intercept, defoliation_difference, duration40, rfq_effect_size]
+#' @param cov_matrix 4x4 covariance matrix matching params order
+#' @param alpha Significance level (default 0.05)
+#' @return tibble with exp_net_benefit, exp_net_benefit_low, exp_net_benefit_high
+calculate_alfalfa_benefit <- function(
+  hay_price,
+  defoliation,
+  theta_defoliation,
+  rfq,
+  theta_rfq,
+  duration_dummy,
+  cost,
+  params,
+  cov_matrix,
+  alpha = 0.05
+) {
+  b0 <- params[1]
+  b1 <- params[2]
+  b2 <- params[3]
+  b3 <- params[4]
+
+  # Point estimate of linear benefit (proportional yield change)
+  benefit <- b0 +
+    b1 * (1 - theta_defoliation) * defoliation +
+    b2 * duration_dummy +
+    b3 * (theta_rfq - 1) * rfq
+
+  # Gradient for delta method
+  gradient <- c(
+    1,
+    (1 - theta_defoliation) * defoliation,
+    duration_dummy,
+    (theta_rfq - 1) * rfq
+  )
+
+  # Variance & SE via delta method
+  benefit_var <- as.numeric(t(gradient) %*% cov_matrix %*% gradient)
+  benefit_se <- sqrt(benefit_var)
+  z <- qnorm(1 - alpha / 2)
+
+  ci_lower <- benefit - z * benefit_se
+  ci_upper <- benefit + z * benefit_se
+
+  tibble(
+    exp_net_benefit = hay_price * benefit - cost,
+    exp_net_benefit_low = hay_price * ci_lower - cost,
+    exp_net_benefit_high = hay_price * ci_upper - cost
+  )
+}
+
+#' Calculate breakeven probability via MVN simulation
+#'
+#' @param n_sims Number of simulations
+#' @param hay_price Hay price $/ton
+#' @param defoliation Defoliation level
+#' @param theta_defoliation Theta for defoliation
+#' @param rfq RFQ value
+#' @param theta_rfq Theta for RFQ
+#' @param duration_dummy Duration dummy (0 or 1)
+#' @param cost Treatment cost $/ac
+#' @param params 4-element parameter vector
+#' @param cov_matrix 4x4 covariance matrix
+#' @param resid_mean Residual mean
+#' @param resid_sd Residual standard deviation
+#' @return Numeric breakeven probability (0-1)
+calculate_alfalfa_breakeven <- function(
+  n_sims,
+  hay_price,
+  defoliation,
+  theta_defoliation,
+  rfq,
+  theta_rfq,
+  duration_dummy,
+  cost,
+  params,
+  cov_matrix,
+  resid_mean = 0,
+  resid_sd = 0
+) {
+  betas <- mvtnorm::rmvnorm(n_sims, mean = params, sigma = cov_matrix)
+
+  lin_benefit <- betas[, 1] +
+    betas[, 2] * (1 - theta_defoliation) * defoliation +
+    betas[, 3] * duration_dummy +
+    betas[, 4] * (theta_rfq - 1) * rfq
+
+  if (resid_sd > 0) {
+    lin_benefit <- lin_benefit + rnorm(n_sims, resid_mean, resid_sd)
+  }
+
+  net <- hay_price * lin_benefit - cost
+  mean(net >= 0)
+}
+
+
+#' Calculate all alfalfa metrics, producing output compatible with plotting functions
+#'
+#' @param programs_df Data frame from alfalfa_programs.csv
+#' @param costs Named vector of costs (names = program_id as character)
+#' @param hay_price Hay price $/ton
+#' @param defoliation Defoliation level
+#' @param duration_dummy 0 for 30-day, 1 for 40-day
+#' @param rfq RFQ value
+#' @param appl_cost base application cost for each program
+#' @return Data frame with columns matching corn/soy contract
+calculate_alfalfa_metrics <- function(
+  programs_df,
+  costs,
+  hay_price,
+  defoliation,
+  duration_dummy,
+  rfq,
+  appl_cost
+) {
+  results <- programs_df |>
+    filter(enabled) |>
+    mutate(product_cost = costs[as.character(program_id)]) |>
+    filter(!is.na(product_cost)) |>
+    mutate(
+      application_cost = appl_cost * n_appl,
+      total_cost = product_cost + application_cost
+    )
+
+  if (nrow(results) == 0) {
+    return(results)
+  }
+
+  results |>
+    rowwise() |>
+    mutate(
+      params = list(c(
+        intercept,
+        defoliation_difference,
+        duration40,
+        rfq_effect_size
+      )),
+      cov_matrix = list(build_cov_matrix(pick(starts_with("cov_")))),
+      calculate_alfalfa_benefit(
+        hay_price = hay_price,
+        defoliation = defoliation,
+        theta_defoliation = theta_defoliation,
+        rfq = rfq,
+        theta_rfq = theta_rfq,
+        duration_dummy = duration_dummy,
+        cost = total_cost,
+        params = params,
+        cov_matrix = cov_matrix
+      ),
+      breakeven_prob = calculate_alfalfa_breakeven(
+        n_sims = 10000,
+        hay_price = hay_price,
+        defoliation = defoliation,
+        theta_defoliation = theta_defoliation,
+        rfq = rfq,
+        theta_rfq = theta_rfq,
+        duration_dummy = duration_dummy,
+        cost = total_cost,
+        params = params,
+        cov_matrix = cov_matrix,
+        resid_mean = residuals_mean,
+        resid_sd = residuals_std
+      ),
+      breakeven_cost = exp_net_benefit + total_cost,
+      across(
+        c(
+          exp_net_benefit,
+          exp_net_benefit_low,
+          exp_net_benefit_high,
+          breakeven_cost
+        ),
+        ~ round(.x, 2)
+      ),
+      breakeven_prob = round(breakeven_prob, 3)
+    ) |>
+    ungroup() |>
+    arrange(desc(exp_net_benefit))
+}
+
+
+# UI builders -------------------------------------------------------------
+
+#' @param programs fungicide programs df
+#' @param ns namespace function from module
+build_costs_ui <- function(programs, ns) {
+  tagList(
+    # base application cost
+    enhanced_numeric_input(
+      inputId = ns("appl_cost"),
+      label = paste("Base application cost"),
+      info = "Cost per acre to apply, added to all costs",
+      value = 10,
+      min = 0,
+      max = 50,
+      required = TRUE,
+      placeholder = "Enter a valid application cost"
+    ),
+
+    # product costs
+    div(
+      class = "cost-grid",
+      id = ns("cost_grid"),
+      lapply(seq_len(nrow(programs)), function(i) {
+        program <- slice(programs, i)
+        enhanced_numeric_input(
+          inputId = ns(paste0("cost_", program$program_id)),
+          label = sprintf(
+            "%s (%s)",
+            program$program_name,
+            program$application_rate
+          ),
+          required = FALSE,
+          placeholder = "Excluded",
+          value = round(program$default_cost / 5) * 5, # to nearest $5
+          min = 0,
+          max = 200,
+          step = 0.01
+        )
+      })
+    ),
+
+    # reset
+    actionButton(
+      inputId = ns("reset_costs"),
+      label = "Reset all costs"
+    ),
+
+    # hidden input that blocks calculations until the ui is ready
+    div(
+      style = "display: none;",
+      checkboxInput(
+        inputId = ns("ready"),
+        label = "Ready",
+        value = TRUE
+      )
+    )
+  )
+}
+
+
 # Plots -------------------------------------------------------------------
 #
 # Visualization functions for fungicide ROI analysis.
@@ -409,7 +669,6 @@ COLORS <- list(
 )
 
 
-## Standard plot ----
 #' Create the main expected net benefit plot
 #' Expected benefit on X, program name on Y
 #'
@@ -558,7 +817,6 @@ if (FALSE) {
 }
 
 
-## Fuel gauge ----
 #' Create a summary card plot showing key metrics
 #' Optional visualization showing top program recommendation.
 #'
@@ -616,7 +874,6 @@ if (FALSE) {
 }
 
 
-## Vertical bar chart ----
 #' Shows programs as vertical bars instead of horizontal.
 #' Useful when there are many programs.
 #'
@@ -697,7 +954,7 @@ if (FALSE) {
     create_vertical_bar_plot("Corn")
 }
 
-## Cost vs benefit plot ----
+
 #' Scatter plot with program cost on X and expected benefit on Y
 create_cost_benefit_plot <- function(df) {
   req(nrow(df) > 0)
@@ -816,7 +1073,7 @@ create_cost_benefit_plot <- function(df) {
     # Layout
     layout(
       title = list(
-        text = "<b>Cost vs. Expected Net Benefit</b><br><sup>Point size = breakeven probability | Bars = 95% CI</sup>",
+        text = "<b>Cost vs. Expected Net Benefit</b><br><sup>Point size = breakeven probability</sup>",
         x = 0.02,
         xanchor = "left"
       ),
@@ -924,3 +1181,9 @@ if (FALSE) {
   ) |>
     create_cost_benefit_plot()
 }
+
+
+# Source modules ---------------------------------------------------------------
+
+source("module__crop.R")
+source("module__alfalfa.R")

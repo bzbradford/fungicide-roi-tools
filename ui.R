@@ -17,8 +17,9 @@ ui <- page_navbar(
 
   # Corn
   nav_panel(
-    title = "Corn (Tar Spot)",
+    title = "Corn",
     value = "corn",
+    icon = icon("seedling"),
     crop_ui("corn", corn_programs, OPTS$corn)
   ),
 
@@ -26,13 +27,15 @@ ui <- page_navbar(
   nav_panel(
     title = "Soybean (White Mold)",
     value = "soybean",
+    icon = icon("leaf"),
     crop_ui("soy", soy_programs, OPTS$soy)
   ),
 
   # Alfalfa
   nav_panel(
-    title = paste("Alfalfa"),
+    title = "Alfalfa",
     value = "alfalfa",
+    icon = icon("pagelines"),
     alfalfa_ui("alfalfa", alfalfa_programs)
   ),
 
@@ -41,7 +44,7 @@ ui <- page_navbar(
   # About tab
   nav_panel(
     title = "About",
-    icon = bsicons::bs_icon("question-circle"),
+    icon = icon("circle-question"),
     card(
       card_header("About This Calculator"),
       card_body(

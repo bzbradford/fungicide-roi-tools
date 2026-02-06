@@ -114,3 +114,13 @@
 .enhanced-input-container input[type="number"] {
   transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
+
+
+/* cost grid setup */
+.cost-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
+  gap: 0.5rem;
+  font-size: small;
+}
