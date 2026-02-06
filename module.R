@@ -201,8 +201,7 @@ crop_server <- function(id, programs, opts) {
               ),
               required = FALSE,
               placeholder = "Excluded",
-              # value = program$default_cost,
-              value = round(program$default_cost / 5) * 5,
+              value = round(program$default_cost / 5) * 5, # to nearest $5
               min = 0,
               max = 200,
               step = 0.01

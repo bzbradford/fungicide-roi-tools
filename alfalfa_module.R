@@ -11,10 +11,22 @@
 build_cov_matrix <- function(row) {
   matrix(
     c(
-      row$cov_1_1, row$cov_1_2, row$cov_1_3, row$cov_1_4,
-      row$cov_1_2, row$cov_2_2, row$cov_2_3, row$cov_2_4,
-      row$cov_1_3, row$cov_2_3, row$cov_3_3, row$cov_3_4,
-      row$cov_1_4, row$cov_2_4, row$cov_3_4, row$cov_4_4
+      row$cov_1_1,
+      row$cov_1_2,
+      row$cov_1_3,
+      row$cov_1_4,
+      row$cov_1_2,
+      row$cov_2_2,
+      row$cov_2_3,
+      row$cov_2_4,
+      row$cov_1_3,
+      row$cov_2_3,
+      row$cov_3_3,
+      row$cov_3_4,
+      row$cov_1_4,
+      row$cov_2_4,
+      row$cov_3_4,
+      row$cov_4_4
     ),
     nrow = 4,
     byrow = TRUE
@@ -157,7 +169,12 @@ calculate_alfalfa_metrics <- function(
   results |>
     rowwise() |>
     mutate(
-      params = list(c(intercept, defoliation_difference, duration40, rfq_effect_size)),
+      params = list(c(
+        intercept,
+        defoliation_difference,
+        duration40,
+        rfq_effect_size
+      )),
       cov_matrix = list(build_cov_matrix(pick(starts_with("cov_")))),
       calculate_alfalfa_benefit(
         hay_price = hay_price,
@@ -186,7 +203,12 @@ calculate_alfalfa_metrics <- function(
       ),
       breakeven_cost = exp_net_benefit + total_cost,
       across(
-        c(exp_net_benefit, exp_net_benefit_low, exp_net_benefit_high, breakeven_cost),
+        c(
+          exp_net_benefit,
+          exp_net_benefit_low,
+          exp_net_benefit_high,
+          breakeven_cost
+        ),
         ~ round(.x, 2)
       ),
       breakeven_prob = round(breakeven_prob, 3)
@@ -331,7 +353,7 @@ alfalfa_server <- function(id, programs) {
               ),
               required = FALSE,
               placeholder = "Excluded",
-              value = round(program$default_cost, 2),
+              value = round(program$default_cost / 5) * 5, # to nearest $5
               min = 0,
               max = 200,
               step = 0.01
