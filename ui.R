@@ -11,6 +11,11 @@ ui <- page_navbar(
   ),
   fillable = TRUE,
   header = tags$head(
+    tags$link(
+      rel = "shortcut icon",
+      href = "seedbag.png",
+      type = "image/png"
+    ),
     tags$link(rel = "stylesheet", type = "text/css", href = "style.css"),
     tags$script(src = "script.js"),
   ),

@@ -14,14 +14,11 @@ suppressPackageStartupMessages({
   library(mvtnorm) # for alfalfa
 })
 
-# renv will record these
-if (FALSE) {
-  library(air)
-}
-
 
 # Dev ----
 
+# renv::init()
+# renv::update()
 # renv::clean()
 # renv::snapshot()
 
@@ -33,15 +30,21 @@ echo <- function(x) {
   print(x)
 }
 
+# rounds to nearest whole multiple of y
+round_to <- function(x, y = 5) {
+  round(x / y) * y
+}
+
 source("enhanced_inputs.R")
 
 
 # Setup -------------------------------------------------------------------
 
-corn_programs <- read_csv("data/corn_programs.csv", show_col_types = FALSE)
-soy_programs <- read_csv("data/soybean_programs.csv", show_col_types = FALSE)
+# corn_programs <- read_csv("data/corn_programs.csv", show_col_types = FALSE)
+corn_programs <- read_csv("data/corn-programs-v2.csv", show_col_types = FALSE)
+soy_programs <- read_csv("data/soybean-programs-v2.csv", show_col_types = FALSE)
 alfalfa_programs <- read_csv(
-  "data/alfalfa_programs.csv",
+  "data/alfalfa-programs.csv",
   show_col_types = FALSE
 )
 
@@ -135,12 +138,10 @@ opts <- OPTS[[1]]
 #' Designed to be used with dplyr::mutate() - returns a tibble that will be
 #' automatically unpacked into columns.
 #'
-#' @param b_0 Intercept coefficient (point estimate)
-#' @param b_1 Slope coefficient (point estimate)
-#' @param b_0_lower Lower CI bound for b_0
-#' @param b_0_upper Upper CI bound for b_0
-#' @param b_1_lower Lower CI bound for b_1
-#' @param b_1_upper Upper CI bound for b_1
+#' @param b0 Intercept coefficient (point estimate)
+#' @param b1 Slope coefficient (point estimate)
+#' @param b0_se Standard error for b0
+#' @param b1_se Standard error for b1
 #' @param theta Disease control efficacy parameter
 #' @param yield Expected yield
 #' @param price Expected sale price per unit
@@ -148,28 +149,29 @@ opts <- OPTS[[1]]
 #' @param treatment_cost Total treatment cost per acre
 #' @return tibble with columns: exp_net_benefit, exp_net_benefit_low, exp_net_benefit_high
 calculate_net_benefit <- function(
-  b_0,
-  b_1,
-  b_0_lower,
-  b_0_upper,
-  b_1_lower,
-  b_1_upper,
+  b0,
+  b1,
+  b0_se,
+  b1_se,
   theta,
   yield,
   price,
   disease_severity,
   treatment_cost
 ) {
-  # Helper to compute benefit for a given set of coefficients
-  compute_benefit <- function(b0, b1) {
-    yield_benefit <- b0 + b1 * (1 - theta) * disease_severity
-    yield * price * yield_benefit - treatment_cost
+  # fractional yield increase
+  calc_yield <- function(b0, b1) {
+    yield * (b0 + b1 * (1 - theta) * disease_severity)
+  }
+  calc_benefit <- function(b0, b1) {
+    calc_yield(b0, b1) * price - treatment_cost
   }
 
   tibble(
-    exp_net_benefit = compute_benefit(b_0, b_1),
-    exp_net_benefit_low = compute_benefit(b_0_lower, b_1_lower),
-    exp_net_benefit_high = compute_benefit(b_0_upper, b_1_upper)
+    exp_yield_benefit = calc_yield(b0, b1),
+    exp_net_benefit = calc_benefit(b0, b1),
+    exp_net_benefit_low = calc_benefit(b0 - b0_se, b1 - b1_se),
+    exp_net_benefit_high = calc_benefit(b0 + b0_se, b1 + b1_se)
   )
 }
 
@@ -177,12 +179,10 @@ calculate_net_benefit <- function(
 if (FALSE) {
   # Standalone usage:
   calculate_net_benefit(
-    b_0 = 0.044,
-    b_1 = -0.028,
-    b_0_lower = 0.017,
-    b_0_upper = 0.071,
-    b_1_lower = -0.222,
-    b_1_upper = 0.166,
+    b0 = 0.044,
+    b1 = -0.028,
+    b0_se = 0.017,
+    b1_se = .015,
     theta = 0.455,
     yield = 180,
     price = 5,
@@ -195,12 +195,10 @@ if (FALSE) {
     mutate(total_cost = default_cost) |>
     mutate(
       calculate_net_benefit(
-        b_0,
-        b_1,
-        b_0_lower,
-        b_0_upper,
-        b_1_lower,
-        b_1_upper,
+        b0,
+        b1,
+        b0_se,
+        b1_se,
         theta,
         yield = 180,
         price = 5,
@@ -209,7 +207,8 @@ if (FALSE) {
       ),
       .by = program_name,
       .keep = "used"
-    )
+    ) |>
+    view()
 }
 
 
@@ -231,10 +230,10 @@ if (FALSE) {
 #' @param mc_draws Optional pre-computed MC draws (overrides simulation)
 #' @return Numeric breakeven probability (0-1)
 calculate_breakeven_prob <- function(
-  b_0,
-  b_1,
-  b_0_se,
-  b_1_se,
+  b0,
+  b1,
+  b0_se,
+  b1_se,
   theta,
   yield,
   price,
@@ -252,10 +251,10 @@ calculate_breakeven_prob <- function(
   } else {
     # STUB: Generate approximate MC draws using normal approximation
     # TODO: Replace with actual beta distribution draws when integrating real data
-    mean_benefit <- b_0 + b_1 * (1 - theta) * disease_severity
+    mean_benefit <- b0 + b1 * (1 - theta) * disease_severity
 
     # Approximate SE using delta method (simplified)
-    se_benefit <- sqrt(b_0_se^2 + (disease_severity * (1 - theta))^2 * b_1_se^2)
+    se_benefit <- sqrt(b0_se^2 + (disease_severity * (1 - theta))^2 * b1_se^2)
 
     # Generate draws (truncated at 0 for yield benefit)
     benefit_draws <- pmax(0, rnorm(n_sim, mean_benefit, se_benefit))
@@ -267,10 +266,10 @@ calculate_breakeven_prob <- function(
 # example
 if (FALSE) {
   calculate_breakeven_prob(
-    b_0 = 0.044,
-    b_1 = -0.028,
-    b_0_se = 0.014,
-    b_1_se = 0.099,
+    b0 = 0.044,
+    b1 = -0.028,
+    b0_se = 0.014,
+    b1_se = 0.099,
     theta = 0.455,
     yield = 180,
     price = 5,
@@ -321,12 +320,10 @@ calculate_all_metrics <- function(
     rowwise() |>
     mutate(
       calculate_net_benefit(
-        b_0,
-        b_1,
-        b_0_lower,
-        b_0_upper,
-        b_1_lower,
-        b_1_upper,
+        b0,
+        b1,
+        b0_se,
+        b1_se,
         theta,
         yield = yield,
         price = price,
@@ -334,10 +331,10 @@ calculate_all_metrics <- function(
         treatment_cost = total_cost
       ),
       breakeven_prob = calculate_breakeven_prob(
-        b_0,
-        b_1,
-        b_0_se,
-        b_1_se,
+        b0,
+        b1,
+        b0_se,
+        b1_se,
         theta,
         yield = yield,
         price = price,
@@ -626,7 +623,7 @@ build_costs_ui <- function(programs, ns) {
           ),
           required = FALSE,
           placeholder = "Excluded",
-          value = round(program$default_cost / 5) * 5, # to nearest $5
+          value = round_to(program$default_cost, 2.5),
           min = 0,
           max = 200,
           step = 0.01
@@ -1001,24 +998,20 @@ create_cost_benefit_plot <- function(df) {
       label = paste0(program_name, "<br>", application_rate),
       # Hover text
       hover_text = paste0(
-        "<b>",
-        program_name,
-        " ",
-        application_rate,
-        "</b><br>",
-        "Total Cost: $",
-        round(total_cost, 2),
-        "<br>",
-        "Expected Benefit: $",
-        round(exp_net_benefit, 2),
-        "<br>",
-        "Breakeven Prob: ",
-        scales::percent(breakeven_prob, accuracy = 0.1),
-        "<br>",
-        "95% CI: $",
-        round(exp_net_benefit_low, 2),
-        " to $",
-        round(exp_net_benefit_high, 2)
+        sprintf("<b>%s %s</b>", program_name, application_rate),
+        {
+          if ("exp_yield_benefit" %in% names(df)) {
+            sprintf("<br>Yield: +%.1f bu/ac", round(exp_yield_benefit, 1))
+          }
+        },
+        sprintf("<br>Total Cost: $%.2f", total_cost),
+        sprintf("<br>Expected Benefit: $%.2f", exp_net_benefit),
+        sprintf("<br>Breakeven Prob: %.1f%%", breakeven_prob * 100),
+        sprintf(
+          "<br>95%% CI: $%.2f to $%.2f",
+          exp_net_benefit_low,
+          exp_net_benefit_high
+        )
       )
     )
 
