@@ -1,8 +1,11 @@
 # General interface for corn and soy
 
 # UI function for crop analysis module
-crop_ui <- function(id, programs, opts) {
-  ns <- NS(id)
+#' @param module_id namespace id for module instance
+#' @param programs list of fungicide programs and params
+#' @param opts named list of options for inputs etc
+crop_ui <- function(module_id, programs, opts) {
+  ns <- NS(module_id)
 
   # layout_sidebar ----
   layout_sidebar(
@@ -76,25 +79,25 @@ crop_ui <- function(id, programs, opts) {
 
       # Chart tabs
       nav_panel(
-        title = "Chart 1",
+        title = "Cost vs Benefit",
         icon = bsicons::bs_icon("bar-chart-fill"),
         plotlyOutput(ns("plot1"), height = "500px")
       ),
       nav_panel(
-        title = "Chart 2",
+        title = "Ranked Programs",
         icon = bsicons::bs_icon("bar-chart-fill"),
         plotlyOutput(ns("plot2"), height = "500px")
       ),
-      nav_panel(
-        title = "Chart 3",
-        icon = bsicons::bs_icon("bar-chart-fill"),
-        plotlyOutput(ns("plot3"), height = "500px")
-      ),
-      nav_panel(
-        title = "Chart 4",
-        icon = bsicons::bs_icon("bar-chart-fill"),
-        plotlyOutput(ns("plot4"), height = "500px")
-      ),
+      # nav_panel(
+      #   title = "Chart 3",
+      #   icon = bsicons::bs_icon("bar-chart-fill"),
+      #   plotlyOutput(ns("plot3"), height = "500px")
+      # ),
+      # nav_panel(
+      #   title = "Chart 4",
+      #   icon = bsicons::bs_icon("bar-chart-fill"),
+      #   plotlyOutput(ns("plot4"), height = "500px")
+      # ),
 
       # Table tab
       nav_panel(
@@ -104,15 +107,15 @@ crop_ui <- function(id, programs, opts) {
       )
     )
   )
-}
+} # end ui
 
 #' Server function for crop analysis module
 #'
-#' @param id module namespace ID
+#' @param module_id module namespace ID
 #' @param programs data frame of programs from {crop}_programs.csv
 #' @param opts crop-specific configuration
-crop_server <- function(id, programs, opts) {
-  moduleServer(id, function(input, output, session) {
+crop_server <- function(module_id, programs, opts) {
+  moduleServer(module_id, function(input, output, session) {
     ns <- session$ns
     program_ids <- programs$program_id
 
@@ -157,8 +160,8 @@ crop_server <- function(id, programs, opts) {
     # collect product costs from inputs as named list
     costs <- reactive({
       req(input$ready)
-      vals <- sapply(program_ids, function(pid) {
-        input[[paste0("cost_", pid)]] %||% NA_real_
+      vals <- sapply(program_ids, function(id) {
+        input[[paste0("cost_", id)]] %||% NA_real_
       })
       set_names(vals, as.character(program_ids))
     }) |>
@@ -197,75 +200,38 @@ crop_server <- function(id, programs, opts) {
 
     # Plots ----
 
+    # cost v benefit plot
     output$plot1 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
       create_cost_benefit_plot(df)
     })
 
+    # ranked programs plot
     output$plot2 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
       create_benefit_plot(df, opts$crop_name)
     })
 
-    output$plot3 <- plotly::renderPlotly({
-      df <- results()
-      req(nrow(df) > 0)
-      create_summary_gauge(df)
-    })
-
-    output$plot4 <- plotly::renderPlotly({
-      df <- results()
-      req(nrow(df) > 0)
-      create_vertical_bar_plot(df, opts$crop_name)
-    })
+    # output$plot3 <- plotly::renderPlotly({
+    #   df <- results()
+    #   req(nrow(df) > 0)
+    #   create_summary_gauge(df)
+    # })
+    #
+    # output$plot4 <- plotly::renderPlotly({
+    #   df <- results()
+    #   req(nrow(df) > 0)
+    #   create_vertical_bar_plot(df, opts$crop_name)
+    # })
 
     # Data table ----
 
     output$table <- DT::renderDT({
       df <- results()
       req(nrow(df) > 0)
-
-      display_df <- df |>
-        mutate(
-          `Fungicide` = program_name,
-          `Appl. Rate` = application_rate,
-          `Appl. Cost ($/ac)` = application_cost,
-          `Product Cost ($/ac)` = product_cost,
-          `Total Cost ($/ac)` = total_cost,
-          `Breakeven Cost ($/ac)` = breakeven_cost,
-          `Expected Net Benefit ($/ac)` = exp_net_benefit,
-          `95% CI Lower` = exp_net_benefit_low,
-          `95% CI Upper` = exp_net_benefit_high,
-          `Breakeven Probability` = breakeven_prob,
-          .keep = "none"
-        )
-
-      DT::datatable(
-        display_df,
-        extensions = "Buttons",
-        options = list(
-          pagination = FALSE,
-          scrollX = TRUE,
-          dom = "Bfrti",
-          buttons = list(
-            list(extend = "copy"),
-            list(extend = "csv", filename = paste0(id, "_fungicide_roi")),
-            list(extend = "excel", filename = paste0(id, "_fungicide_roi"))
-          )
-        ),
-        rownames = FALSE
-      ) |>
-        DT::formatCurrency(
-          columns = 3:10,
-          digits = 2
-        ) |>
-        DT::formatPercentage(columns = "Breakeven Probability", digits = 1) |>
-        DT::formatStyle(
-          columns = "Expected Net Benefit ($/ac)",
-          color = DT::styleInterval(0, c(COLORS$negative, "inherit"))
-        )
+      build_results_dt(df, opts$crop_name)
     })
-  }) # end module
+  }) # end server
 }

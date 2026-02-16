@@ -5,8 +5,9 @@ account: bbradford
 server: connect.doit.wisc.edu
 hostUrl: https://connect.doit.wisc.edu/__api__
 appId: 573
-bundleId: 4504
+bundleId: 4505
 url: https://connect.doit.wisc.edu/roi-tools/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
+ignoredFiles: .archive/corn-programs-v1.csv|.archive/soybean-programs.csv

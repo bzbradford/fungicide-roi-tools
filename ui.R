@@ -25,7 +25,8 @@ ui <- page_navbar(
     title = "Corn",
     value = "corn",
     icon = icon("seedling"),
-    crop_ui("corn", corn_programs, OPTS$corn)
+    # crop_ui("corn", corn_programs, OPTS$corn)
+    OPTS$corn$ui()
   ),
 
   # Soybean
@@ -33,7 +34,7 @@ ui <- page_navbar(
     title = "Soybean (White Mold)",
     value = "soybean",
     icon = icon("leaf"),
-    crop_ui("soy", soy_programs, OPTS$soy)
+    OPTS$soy$ui()
   ),
 
   # Alfalfa

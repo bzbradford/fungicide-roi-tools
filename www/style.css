@@ -1,4 +1,25 @@
-/* Enhanced Inputs Styling */
+/*--- ROI TOOLS ---*/
+
+/* radio button layout and spacing */
+.shiny-options-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+}
+
+/* costs grid */
+.cost-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
+  gap: 0.5rem;
+  font-size: small;
+}
+
+
+/* --- Enhanced Inputs Styling --- */
 
 .enhanced-input-container > .form-group {
   margin-bottom: unset;
@@ -115,12 +136,3 @@
   transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
 
-
-/* cost grid setup */
-.cost-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  align-items: end;
-  gap: 0.5rem;
-  font-size: small;
-}

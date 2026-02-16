@@ -40,7 +40,6 @@ source("enhanced_inputs.R")
 
 # Setup -------------------------------------------------------------------
 
-# corn_programs <- read_csv("data/corn_programs.csv", show_col_types = FALSE)
 corn_programs <- read_csv("data/corn-programs-v2.csv", show_col_types = FALSE)
 soy_programs <- read_csv("data/soybean-programs-v2.csv", show_col_types = FALSE)
 alfalfa_programs <- read_csv(
@@ -51,7 +50,8 @@ alfalfa_programs <- read_csv(
 crop_config <-
   function(
     crop_name,
-    title,
+    ui,
+    server,
     yield_input,
     price_input,
     disease_severity_choices,
@@ -64,7 +64,8 @@ crop_config <-
 OPTS <- list(
   corn = crop_config(
     crop_name = "Corn",
-    title = "Fungicide ROI Calculator for Tar Spot of Corn",
+    ui = \() crop_ui("corn", corn_programs, OPTS$corn),
+    server = \() crop_server("corn", corn_programs, OPTS$corn),
     yield_input = list(
       value = 180,
       min = 1,
@@ -90,7 +91,8 @@ OPTS <- list(
   ),
   soy = crop_config(
     crop_name = "Soybean",
-    title = "Fungicide ROI Calculator for White Mold of Soybean",
+    ui = \() crop_ui("soy", soy_programs, OPTS$soy),
+    server = \() crop_server("soy", soy_programs, OPTS$soy),
     yield_input = list(
       value = 40,
       min = 1,
@@ -647,6 +649,91 @@ build_costs_ui <- function(programs, ns) {
       )
     )
   )
+}
+
+#' @param df results df from `calculate_all_metrics()`
+#' @param fname_prefix prefix for table export filenames
+build_results_dt <- function(df, fname_prefix = "crop") {
+  dollar <- function(x) sprintf("$%.2f", x)
+
+  has_yield_col <- "exp_yield_benefit" %in% names(df)
+
+  display_df <- df |>
+    arrange(desc(exp_net_benefit)) |>
+    mutate(
+      `Fungicide` = program_name,
+      `Appl. Rate` = application_rate,
+      `Appl. Cost ($/ac)` = application_cost,
+      `Product Cost ($/ac)` = product_cost,
+      `Total Cost ($/ac)` = total_cost,
+      # optional column
+      `Yield Increase (bu/ac)` = if (has_yield_col) {
+        round(exp_yield_benefit, 2)
+      },
+      `Expected Net Benefit ($/ac)` = exp_net_benefit,
+      `Benefit Low Est. ($/ac)` = exp_net_benefit_low,
+      `Benefit High Est. ($/ac)` = exp_net_benefit_high,
+      `Breakeven Cost ($/ac)` = breakeven_cost,
+      `Breakeven Probability (%)` = breakeven_prob,
+      .keep = "none"
+    )
+
+  dollar_cols <- which(str_detect(names(display_df), fixed("$")))
+  pct_cols <- which(str_detect(names(display_df), fixed("%")))
+
+  DT::datatable(
+    display_df,
+    extensions = "Buttons",
+    selection = "none",
+    options = list(
+      pagination = FALSE,
+      scrollX = TRUE,
+      dom = "Bfrti",
+      buttons = list(
+        list(extend = "copy"),
+        list(extend = "csv", filename = paste0(fname_prefix, "_fungicide_roi")),
+        list(
+          extend = "excel",
+          filename = paste0(fname_prefix, "_fungicide_roi")
+        )
+      ),
+      columnDefs = list(
+        list(className = "dt-center", targets = c(3:(ncol(display_df) - 1)))
+      )
+    ),
+    rownames = FALSE
+  ) |>
+    DT::formatCurrency(columns = dollar_cols, digits = 2) |>
+    DT::formatPercentage(columns = pct_cols, digits = 1) |>
+    DT::formatStyle(
+      columns = dollar_cols,
+      color = DT::styleInterval(0, c(COLORS$negative, "inherit"))
+    )
+}
+
+if (FALSE) {
+  test_costs <- setNames(c(37, 28, 34), c("1", "2", "3"))
+  calculate_all_metrics(
+    programs_df = corn_programs,
+    costs = test_costs,
+    yield = 180,
+    price = 5,
+    disease_severity = 0.05,
+    appl_cost = 10
+  ) |>
+    build_results_dt()
+
+  # when it doesn't have a yield benefit column (eg alfalfa)
+  calculate_all_metrics(
+    programs_df = corn_programs,
+    costs = test_costs,
+    yield = 180,
+    price = 5,
+    disease_severity = 0.05,
+    appl_cost = 10
+  ) |>
+    select(-exp_yield_benefit) |>
+    build_results_dt()
 }
 
 

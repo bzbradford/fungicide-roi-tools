@@ -1,5 +1,5 @@
 program_id,enabled,program_name,application_rate,default_cost,n_appl,theta,tau,b0,b1,b0_se,b1_se
-1,TRUE,Cobra @ R1,8 fl oz,2.7,1,0.498969,0.498969,0.0733,0.55,0.029,0.204
+1,TRUE,Cobra @ R1,6 fl oz,2.03,1,0.498969,0.498969,0.0733,0.55,0.029,0.204
 2,TRUE,Cobra @ V4/V5,8 fl oz,2.7,1,0.8233,0.8233,0.0733,0.55,0.029,0.204
 3,TRUE,Delaro Complete @ R3,8 fl oz,27.03,1,0.7076,0.7076,0.0733,0.55,0.029,0.204
 4,TRUE,Endura @ R1 fb R3,8 fl oz ea.,82.64,2,0.35,0.35,0.0733,0.55,0.029,0.204

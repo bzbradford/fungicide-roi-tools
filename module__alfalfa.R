@@ -4,10 +4,10 @@
 # - Delta method CIs (vs stored CI bounds)
 # - MVN simulation for breakeven (vs normal approximation)
 
-#' @param id:string module id
+#' @param module_id:string module id
 #' @param programs:tibble fung program df for alfalfa
-alfalfa_ui <- function(id, programs) {
-  ns <- NS(id)
+alfalfa_ui <- function(module_id, programs) {
+  ns <- NS(module_id)
 
   # layout_sidebar ----
   layout_sidebar(
@@ -84,25 +84,25 @@ alfalfa_ui <- function(id, programs) {
 
       # Chart tabs
       nav_panel(
-        title = "Chart 1",
+        title = "Cost vs Benefit",
         icon = bsicons::bs_icon("bar-chart-fill"),
         plotlyOutput(ns("plot1"), height = "500px")
       ),
       nav_panel(
-        title = "Chart 2",
+        title = "Ranked Programs",
         icon = bsicons::bs_icon("bar-chart-fill"),
         plotlyOutput(ns("plot2"), height = "500px")
       ),
-      nav_panel(
-        title = "Chart 3",
-        icon = bsicons::bs_icon("bar-chart-fill"),
-        plotlyOutput(ns("plot3"), height = "500px")
-      ),
-      nav_panel(
-        title = "Chart 4",
-        icon = bsicons::bs_icon("bar-chart-fill"),
-        plotlyOutput(ns("plot4"), height = "500px")
-      ),
+      # nav_panel(
+      #   title = "Chart 3",
+      #   icon = bsicons::bs_icon("bar-chart-fill"),
+      #   plotlyOutput(ns("plot3"), height = "500px")
+      # ),
+      # nav_panel(
+      #   title = "Chart 4",
+      #   icon = bsicons::bs_icon("bar-chart-fill"),
+      #   plotlyOutput(ns("plot4"), height = "500px")
+      # ),
 
       # Table tab
       nav_panel(
@@ -114,10 +114,10 @@ alfalfa_ui <- function(id, programs) {
   )
 }
 
-#' @param id:string module id
+#' @param module_id:string module id
 #' @param programs:tibble fung programs df for alfalfa
-alfalfa_server <- function(id, programs) {
-  moduleServer(id, function(input, output, session) {
+alfalfa_server <- function(module_id, programs) {
+  moduleServer(module_id, function(input, output, session) {
     ns <- session$ns
     program_ids <- programs$program_id
 
@@ -145,8 +145,8 @@ alfalfa_server <- function(id, programs) {
     # Costs reactive
     costs <- reactive({
       req(input$ready)
-      vals <- sapply(program_ids, function(pid) {
-        input[[paste0("cost_", pid)]] %||% NA_real_
+      vals <- sapply(program_ids, function(id) {
+        input[[paste0("cost_", id)]] %||% NA_real_
       })
       set_names(vals, as.character(program_ids))
     }) |>
@@ -184,74 +184,39 @@ alfalfa_server <- function(id, programs) {
       )
     })
 
-    # Plots - reuse existing plot functions from global.R
+    # Plots ----
+
+    # cost v benefit plot
     output$plot1 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
       create_cost_benefit_plot(df)
     })
 
+    # ranked programs plot
     output$plot2 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
       create_benefit_plot(df, "Alfalfa")
     })
 
-    output$plot3 <- plotly::renderPlotly({
-      df <- results()
-      req(nrow(df) > 0)
-      create_summary_gauge(df)
-    })
+    # output$plot3 <- plotly::renderPlotly({
+    #   df <- results()
+    #   req(nrow(df) > 0)
+    #   create_summary_gauge(df)
+    # })
+    #
+    # output$plot4 <- plotly::renderPlotly({
+    #   df <- results()
+    #   req(nrow(df) > 0)
+    #   create_vertical_bar_plot(df, "Alfalfa")
+    # })
 
-    output$plot4 <- plotly::renderPlotly({
-      df <- results()
-      req(nrow(df) > 0)
-      create_vertical_bar_plot(df, "Alfalfa")
-    })
-
-    # Data table - same formatting as crop_server
+    # Data table ----
     output$table <- DT::renderDT({
       df <- results()
       req(nrow(df) > 0)
-
-      display_df <- df |>
-        mutate(
-          `Fungicide` = program_name,
-          `Appl. Rate` = application_rate,
-          `Product Cost ($/ac)` = product_cost,
-          `Total Cost ($/ac)` = total_cost,
-          `Breakeven Cost ($/ac)` = breakeven_cost,
-          `Expected Net Benefit ($/ac)` = exp_net_benefit,
-          `95% CI Lower` = exp_net_benefit_low,
-          `95% CI Upper` = exp_net_benefit_high,
-          `Breakeven Probability` = breakeven_prob,
-          .keep = "none"
-        )
-
-      DT::datatable(
-        display_df,
-        extensions = "Buttons",
-        options = list(
-          pagination = FALSE,
-          scrollX = TRUE,
-          dom = "Bfrti",
-          buttons = list(
-            list(extend = "copy"),
-            list(extend = "csv", filename = paste0(id, "_fungicide_roi")),
-            list(extend = "excel", filename = paste0(id, "_fungicide_roi"))
-          )
-        ),
-        rownames = FALSE
-      ) |>
-        DT::formatCurrency(
-          columns = 3:8,
-          digits = 2
-        ) |>
-        DT::formatPercentage(columns = "Breakeven Probability", digits = 1) |>
-        DT::formatStyle(
-          columns = "Expected Net Benefit ($/ac)",
-          color = DT::styleInterval(0, c(COLORS$negative, "inherit"))
-        )
+      build_results_dt(df, "Alfalfa")
     })
   })
 }
