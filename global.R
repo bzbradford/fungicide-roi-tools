@@ -47,75 +47,86 @@ alfalfa_programs <- read_csv(
   show_col_types = FALSE
 )
 
-crop_config <-
-  function(
-    crop_name,
-    ui,
-    server,
-    yield_input,
-    price_input,
-    disease_severity_choices,
-    disease_severity_slider,
-    appl_cost_input
-  ) {
-    as.list(environment())
-  }
-
+# input configs for each module
 OPTS <- list(
-  corn = crop_config(
+  corn = lst(
+    slug = "corn",
+    ui = \() crop_ui(slug, corn_programs, OPTS$corn),
+    server = \() crop_server(slug, corn_programs, OPTS$corn),
     crop_name = "Corn",
-    ui = \() crop_ui("corn", corn_programs, OPTS$corn),
-    server = \() crop_server("corn", corn_programs, OPTS$corn),
-    yield_input = list(
+    yield_units = "bu/ac",
+    yield_numeric_input = list(
       value = 180,
       min = 1,
       max = 400,
-      step = 1
+      step = 1,
+      info = "Typical yield, absent any disease pressure"
     ),
-    price_input = list(
+    price_numeric_input = list(
       value = 5,
       min = 0,
-      max = 10
+      max = 10,
+      step = 0.01,
+      info = "Expected sale price of harvested grain"
     ),
-    disease_severity_choices = list(
-      "Low (1%)" = .01,
-      "High (5%)" = .05,
-      "Custom" = "custom"
+    severity_radio_input = list(
+      choices = list(
+        "Low (1%)" = .01,
+        "High (5%)" = .05,
+        "Custom" = "custom"
+      ),
+      info = "Expected disease severity on ear leaf at the end of the season"
     ),
-    disease_severity_slider = list(
+    severity_slider_input = list(
       value = 5,
       min = 0,
       max = 50,
-      step = 1
+      step = 1,
+      info = "Expected disease severity on ear leaf at the end of the season"
     )
   ),
-  soy = crop_config(
+  soy = lst(
+    slug = "soy",
+    ui = \() crop_ui(slug, soy_programs, OPTS$soy),
+    server = \() crop_server(slug, soy_programs, OPTS$soy),
     crop_name = "Soybean",
-    ui = \() crop_ui("soy", soy_programs, OPTS$soy),
-    server = \() crop_server("soy", soy_programs, OPTS$soy),
-    yield_input = list(
+    yield_units = "bu/ac",
+    yield_numeric_input = list(
       value = 40,
       min = 1,
       max = 80,
-      step = 1
+      step = 1,
+      info = "Typical yield, absent any disease pressure"
     ),
-    price_input = list(
+    price_numeric_input = list(
       value = 12,
       min = 0,
       max = 18,
-      step = .01
+      step = 0.01,
+      info = "Expected sale price of harvested grain"
     ),
-    disease_severity_choices = list(
-      "Low (15%)" = .15,
-      "High (30%)" = .30,
-      "Custom" = "custom"
+    severity_radio_input = list(
+      choices = list(
+        "Low (15%)" = .15,
+        "High (30%)" = .30,
+        "Custom" = "custom"
+      ),
+      info = "Expected white mold severity at the end of the season"
     ),
-    disease_severity_slider = list(
+    severity_slider_input = list(
       value = 5,
       min = 0,
       max = 50,
-      step = 1
+      step = 1,
+      info = "Expected white mold severity at the end of the season"
     )
+  ),
+  alfalfa = lst(
+    slug = "alfalfa",
+    ui = \() alfalfa_ui(slug, alfalfa_programs, OPTS$alfalfa),
+    server = \() alfalfa_server(slug, alfalfa_programs, OPTS$alfalfa),
+    crop_name = "Alfalfa",
+    yield_units = "%"
   )
 )
 
@@ -457,6 +468,7 @@ calculate_alfalfa_benefit <- function(
   ci_upper <- benefit + z * benefit_se
 
   tibble(
+    exp_yield_benefit = benefit,
     exp_net_benefit = hay_price * benefit - cost,
     exp_net_benefit_low = hay_price * ci_lower - cost,
     exp_net_benefit_high = hay_price * ci_upper - cost
@@ -594,6 +606,19 @@ calculate_alfalfa_metrics <- function(
 
 # UI builders -------------------------------------------------------------
 
+costs_ui_title <- span(
+  style = "display: flex; justify-content: space-between; align-items: center;",
+  "Treatment Costs ($/acre)",
+  bslib::tooltip(
+    tags$span(
+      class = "enhanced-input-icon info-icon",
+      bsicons::bs_icon("info-circle", size = "1em")
+    ),
+    "All treatment costs default to current U.S. market median prices; these values can be changed to reflect local pricing.",
+    placement = "top"
+  )
+)
+
 #' @param programs fungicide programs df
 #' @param ns namespace function from module
 build_costs_ui <- function(programs, ns) {
@@ -602,7 +627,7 @@ build_costs_ui <- function(programs, ns) {
     enhanced_numeric_input(
       inputId = ns("appl_cost"),
       label = paste("Base application cost"),
-      info = "Cost per acre to apply, added to all costs",
+      info = "Sprayer application cost for a single foliar application, added to each program based on number of program sprays.",
       value = 10,
       min = 0,
       max = 50,
@@ -652,12 +677,11 @@ build_costs_ui <- function(programs, ns) {
 }
 
 #' @param df results df from `calculate_all_metrics()`
-#' @param fname_prefix prefix for table export filenames
-build_results_dt <- function(df, fname_prefix = "crop") {
+#' @param opts:list config for the crop
+build_results_dt <- function(df, opts) {
   dollar <- function(x) sprintf("$%.2f", x)
 
-  has_yield_col <- "exp_yield_benefit" %in% names(df)
-
+  yield_col <- sprintf("Yield Preserved (%s)", opts$yield_units)
   display_df <- df |>
     arrange(desc(exp_net_benefit)) |>
     mutate(
@@ -666,10 +690,7 @@ build_results_dt <- function(df, fname_prefix = "crop") {
       `Appl. Cost ($/ac)` = application_cost,
       `Product Cost ($/ac)` = product_cost,
       `Total Cost ($/ac)` = total_cost,
-      # optional column
-      `Yield Increase (bu/ac)` = if (has_yield_col) {
-        round(exp_yield_benefit, 2)
-      },
+      !!yield_col := round(exp_yield_benefit, 2),
       `Expected Net Benefit ($/ac)` = exp_net_benefit,
       `Benefit Low Est. ($/ac)` = exp_net_benefit_low,
       `Benefit High Est. ($/ac)` = exp_net_benefit_high,
@@ -691,10 +712,10 @@ build_results_dt <- function(df, fname_prefix = "crop") {
       dom = "Bfrti",
       buttons = list(
         list(extend = "copy"),
-        list(extend = "csv", filename = paste0(fname_prefix, "_fungicide_roi")),
+        list(extend = "csv", filename = paste0(opts$slug, "_fungicide_roi")),
         list(
           extend = "excel",
-          filename = paste0(fname_prefix, "_fungicide_roi")
+          filename = paste0(opts$slug, "_fungicide_roi")
         )
       ),
       columnDefs = list(
@@ -752,344 +773,46 @@ COLORS <- list(
   background = "#F5F5F5"
 )
 
+# Define color palette
+plot_colors <- list(
+  high_profit = "#0072B2", # blue
+  profitable = "#56B4E9", # sky
+  marginal = "#E69F00", # orange
+  loss = "#D55E00", # red
+  bg_green = "rgba(0, 158, 115, 0.03)",
+  bg_red = "rgba(213, 94, 0, 0.03)"
+)
 
-#' Create the main expected net benefit plot
-#' Expected benefit on X, program name on Y
-#'
-#' @param results_df Data frame from calculate_all_metrics()
-#' @param crop_name Display name for the crop (used in title)
-#' @param top_n Number of top programs to highlight (default 3)
-#' @return plotly object
-create_benefit_plot <- function(results_df, crop_name, top_n = 3) {
-  if (nrow(results_df) == 0) {
-    # Return empty plot with message
-    return(
-      plot_ly() |>
-        layout(
-          title = "No programs to display",
-          annotations = list(
-            text = "Enter treatment costs to see results",
-            x = 0.5,
-            y = 0.5,
-            xref = "paper",
-            yref = "paper",
-            showarrow = FALSE,
-            font = list(size = 16)
-          )
-        )
-    )
-  }
 
-  # Prepare data for plotting
-  plot_df <- results_df |>
+build_extra_plotly_data <- function(df, yield_units) {
+  # profit_levels <- c(
+  #   "High Profit (>$10)",
+  #   "Profitable ($0-$10)",
+  #   "Marginal (-$10-$0)",
+  #   "Loss (<-$10)"
+  # )
+  df |>
     mutate(
-      rank = row_number(),
-      color_group = if_else(rank <= top_n, "Top 3", "Other"),
-      marker_color = if_else(rank <= top_n, COLORS$primary, COLORS$secondary),
-      hover_text = sprintf(
-        "<b>%s</b> (%s)<br>Expected Benefit: %s<br>95%% CI: [%s, %s]<br>Breakeven Prob: %.1f%%",
-        program_name,
-        application_rate,
-        scales::dollar(exp_net_benefit),
-        scales::dollar(exp_net_benefit_low),
-        scales::dollar(exp_net_benefit_high),
-        breakeven_prob * 100
-      ),
-      program_name = sprintf(
-        "%s %s<br>%s/ac",
-        program_name,
-        application_rate,
-        scales::dollar(total_cost)
-      ),
-    )
-
-  # Order by benefit (lowest to highest for horizontal bars, so highest is at top)
-  plot_df$program_name <- factor(
-    plot_df$program_name,
-    levels = plot_df$program_name[order(plot_df$exp_net_benefit)]
-  )
-
-  # Calculate x-axis range for the shaded negative region
-  x_min <- min(plot_df$exp_net_benefit_low, 0, na.rm = TRUE)
-  x_max <- max(plot_df$exp_net_benefit_high, 0, na.rm = TRUE)
-  x_pad <- (x_max - x_min) * 0.1
-
-  # Build plot
-  p <- plot_df |>
-    plot_ly(y = ~program_name) |>
-    # Points with error bars
-    add_trace(
-      type = "scatter",
-      mode = "markers",
-      x = ~exp_net_benefit,
-      error_x = list(
-        type = "data",
-        symmetric = FALSE,
-        arrayminus = ~ (exp_net_benefit - exp_net_benefit_low),
-        array = ~ (exp_net_benefit_high - exp_net_benefit),
-        color = ~marker_color,
-        thickness = 1.5
-      ),
-      marker = list(
-        size = 12,
-        color = ~marker_color
-      ),
-      text = ~hover_text,
-      hoverinfo = "text",
-      showlegend = FALSE
-    ) |>
-    layout(
-      title = list(
-        text = sprintf(
-          "Expected Net Benefit by Fungicide Program (%s)",
-          crop_name
-        ),
-        font = list(size = 16)
-      ),
-      xaxis = list(
-        title = "Expected Net Benefit ($/acre)",
-        tickformat = "$,.0f",
-        zeroline = TRUE,
-        zerolinewidth = 2,
-        zerolinecolor = "rgba(0,0,0,0.3)",
-        range = c(x_min - x_pad, x_max + x_pad)
-      ),
-      yaxis = list(
-        title = "",
-        categoryorder = "array",
-        categoryarray = levels(plot_df$program_name)
-      ),
-      # Shaded region for negative values
-      shapes = list(
-        list(
-          type = "rect",
-          x0 = x_min - x_pad,
-          x1 = 0,
-          y0 = -0.5,
-          y1 = nrow(plot_df) - 0.5,
-          fillcolor = "rgba(255, 0, 0, 0.05)",
-          line = list(width = 0),
-          layer = "below"
-        )
-      ),
-      margin = list(l = 180, r = 50, t = 60, b = 50),
-      hoverlabel = list(
-        bgcolor = "white",
-        font = list(size = 12)
-      )
-    ) |>
-    plotly::config(
-      displayModeBar = TRUE,
-      displaylogo = FALSE,
-      modeBarButtonsToRemove = c("lasso2d", "select2d")
-    )
-
-  p
-}
-
-# examples
-if (FALSE) {
-  calculate_all_metrics(
-    programs_df = corn_programs,
-    costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
-    yield = 180,
-    price = 5,
-    disease_severity = 0.05,
-    appl_cost = 10
-  ) |>
-    create_benefit_plot("Corn")
-}
-
-
-#' Create a summary card plot showing key metrics
-#' Optional visualization showing top program recommendation.
-#'
-#' @param results_df Data frame from calculate_all_metrics()
-#' @return plotly object (gauge or indicator style)
-create_summary_gauge <- function(results_df) {
-  if (nrow(results_df) == 0) {
-    return(NULL)
-  }
-
-  top_program <- results_df[1, ]
-
-  plot_ly(
-    type = "indicator",
-    mode = "gauge+number+delta",
-    value = top_program$breakeven_prob * 100,
-    title = list(
-      text = sprintf(
-        "Top Pick: %s<br><span style='font-size:0.8em'>Breakeven Probability</span>",
-        top_program$program_name
-      )
-    ),
-    delta = list(reference = 50, suffix = "%"),
-    gauge = list(
-      axis = list(range = c(0, 100), ticksuffix = "%"),
-      bar = list(color = COLORS$primary),
-      steps = list(
-        list(range = c(0, 50), color = "rgba(255,0,0,0.1)"),
-        list(range = c(50, 100), color = "rgba(0,255,0,0.1)")
-      ),
-      threshold = list(
-        line = list(color = "black", width = 2),
-        thickness = 0.75,
-        value = 50
-      )
-    ),
-    number = list(suffix = "%")
-  ) |>
-    plotly::layout(
-      margin = list(l = 30, r = 30, t = 80, b = 30)
-    )
-}
-
-# examples
-if (FALSE) {
-  calculate_all_metrics(
-    programs_df = corn_programs,
-    costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
-    yield = 180,
-    price = 5,
-    disease_severity = 0.05,
-    appl_cost = 10
-  ) |>
-    create_summary_gauge()
-}
-
-
-#' Shows programs as vertical bars instead of horizontal.
-#' Useful when there are many programs.
-#'
-#' @param results_df Data frame from calculate_all_metrics()
-#' @param crop_name Display name for the crop
-#' @return plotly object
-create_vertical_bar_plot <- function(results_df, crop_name) {
-  if (nrow(results_df) == 0) {
-    return(plotly::plot_ly() |> plotly::layout(title = "No data"))
-  }
-
-  plot_df <- results_df |>
-    mutate(
-      rank = row_number(),
-      bar_color = if_else(rank <= 3, COLORS$primary, COLORS$secondary),
-      label = paste0(program_name, "\n(", application_rate, ")")
-    )
-
-  # Order by benefit descending
-  plot_df$label <- factor(
-    plot_df$label,
-    levels = plot_df$label[order(-plot_df$exp_net_benefit)]
-  )
-
-  plot_ly(plot_df, x = ~label) |>
-    add_trace(
-      type = "bar",
-      y = ~exp_net_benefit,
-      error_y = list(
-        type = "data",
-        symmetric = FALSE,
-        arrayminus = ~ (exp_net_benefit - exp_net_benefit_low),
-        array = ~ (exp_net_benefit_high - exp_net_benefit)
-      ),
-      marker = list(color = ~bar_color),
-      hovertemplate = paste0(
-        "<b>%{x}</b><br>",
-        "Expected: %{y:$,.2f}<br>",
-        "<extra></extra>"
-      )
-    ) |>
-    plotly::layout(
-      title = sprintf("Expected Net Benefit (%s)", crop_name),
-      xaxis = list(
-        title = "",
-        tickangle = -45
-      ),
-      yaxis = list(
-        title = "Expected Net Benefit ($/acre)",
-        tickformat = "$,.0f",
-        zeroline = TRUE,
-        zerolinewidth = 2
-      ),
-      shapes = list(
-        list(
-          type = "line",
-          x0 = -0.5,
-          x1 = nrow(plot_df) - 0.5,
-          y0 = 0,
-          y1 = 0,
-          line = list(color = "black", width = 1, dash = "dash")
-        )
-      ),
-      margin = list(b = 120)
-    )
-}
-
-# examples
-if (FALSE) {
-  calculate_all_metrics(
-    programs_df = corn_programs,
-    costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
-    yield = 180,
-    price = 5,
-    disease_severity = 0.05,
-    appl_cost = 10
-  ) |>
-    create_vertical_bar_plot("Corn")
-}
-
-
-#' Scatter plot with program cost on X and expected benefit on Y
-create_cost_benefit_plot <- function(df) {
-  req(nrow(df) > 0)
-
-  # Define color palette
-  plot_colors <- list(
-    high_profit = "#0072B2", # blue
-    profitable = "#56B4E9", # sky
-    marginal = "#E69F00", # orange
-    loss = "#D55E00", # red
-    bg_green = "rgba(0, 158, 115, 0.03)",
-    bg_red = "rgba(213, 94, 0, 0.03)"
-  )
-
-  # Prepare data
-  df_plot <- df |>
-    mutate(
-      # Profit category
-      profit_category = case_when(
-        exp_net_benefit > 10 ~ "High Profit (>$10)",
-        exp_net_benefit > 0 ~ "Profitable ($0-$10)",
-        exp_net_benefit > -10 ~ "Marginal (-$10-$0)",
-        TRUE ~ "Loss (<-$10)"
-      ),
-      profit_category = factor(
-        profit_category,
-        levels = c(
-          "High Profit (>$10)",
-          "Profitable ($0-$10)",
-          "Marginal (-$10-$0)",
-          "Loss (<-$10)"
-        )
-      ),
-      # Color mapping
-      point_color = case_when(
+      # profit_category = case_when(
+      #   exp_net_benefit > 10 ~ profit_levels[1],
+      #   exp_net_benefit > 0 ~ profit_levels[2],
+      #   exp_net_benefit > -10 ~ profit_levels[3],
+      #   TRUE ~ profit_levels[4]
+      # ) |>
+      #   factor(profit_levels),
+      marker_color = case_when(
         exp_net_benefit > 10 ~ plot_colors$high_profit,
         exp_net_benefit > 0 ~ plot_colors$profitable,
         exp_net_benefit > -10 ~ plot_colors$marginal,
         TRUE ~ plot_colors$loss
       ),
-      # Size scaling (map breakeven_prob to reasonable point sizes)
-      point_size = scales::rescale(breakeven_prob, to = c(12, 40)),
-      # Label for plot
-      label = paste0(program_name, "<br>", application_rate),
       # Hover text
       hover_text = paste0(
         sprintf("<b>%s %s</b>", program_name, application_rate),
-        {
-          if ("exp_yield_benefit" %in% names(df)) {
-            sprintf("<br>Yield: +%.1f bu/ac", round(exp_yield_benefit, 1))
-          }
+        if (yield_units == "%") {
+          sprintf("<br>Yield: %+.1f%%", exp_yield_benefit * 100)
+        } else {
+          sprintf("<br>Yield: %+.1f %s", exp_yield_benefit, yield_units)
         },
         sprintf("<br>Total Cost: $%.2f", total_cost),
         sprintf("<br>Expected Benefit: $%.2f", exp_net_benefit),
@@ -1101,6 +824,21 @@ create_cost_benefit_plot <- function(df) {
         )
       )
     )
+}
+
+#' Scatter plot with program cost on X and expected benefit on Y
+#' @param df from calculate_all_metrics()
+#' @param opts config for crop. needs $yield_units
+create_cost_benefit_plot <- function(df, opts = list()) {
+  req(nrow(df) > 0)
+
+  # Prepare data
+  df_plot <- df |>
+    mutate(
+      point_size = scales::rescale(breakeven_prob, to = c(12, 40)),
+      label = paste0(program_name, "<br>", application_rate)
+    ) |>
+    build_extra_plotly_data(opts$yield_units)
 
   # Calculate axis ranges
   x_range <- range(df_plot$total_cost, na.rm = TRUE)
@@ -1110,26 +848,6 @@ create_cost_benefit_plot <- function(df) {
 
   # Create plot
   plot_ly() |>
-    # # Add error bars for confidence intervals
-    # add_trace(
-    #   data = df_plot,
-    #   x = ~total_cost,
-    #   y = ~exp_net_benefit,
-    #   type = "scatter",
-    #   mode = "markers",
-    #   error_y = list(
-    #     type = "data",
-    #     symmetric = FALSE,
-    #     array = ~ (exp_net_benefit_high - exp_net_benefit),
-    #     arrayminus = ~ (exp_net_benefit - exp_net_benefit_low),
-    #     color = "rgba(100, 100, 100, 0.4)",
-    #     thickness = 1,
-    #     width = 4
-    #   ),
-    #   marker = list(size = 0, opacity = 0),
-    #   hoverinfo = "skip",
-    #   showlegend = FALSE
-    # ) |>
     # Add points
     add_trace(
       data = df_plot,
@@ -1139,7 +857,7 @@ create_cost_benefit_plot <- function(df) {
       mode = "markers+text",
       marker = list(
         size = ~point_size,
-        color = ~point_color,
+        color = ~marker_color,
         line = list(color = "white", width = 2),
         opacity = 0.85
       ),
@@ -1153,7 +871,7 @@ create_cost_benefit_plot <- function(df) {
     # Layout
     layout(
       title = list(
-        text = "<b>Cost vs. Expected Net Benefit</b><br><sup>Point size = breakeven probability</sup>",
+        text = "<b>Cost vs. Expected Net Benefit</b><br><sup>Hover mouse over individual points for more information</sup>",
         x = 0.02,
         xanchor = "left"
       ),
@@ -1162,14 +880,16 @@ create_cost_benefit_plot <- function(df) {
         tickprefix = "$",
         range = c(x_range[1] - x_pad, x_range[2] + x_pad),
         gridcolor = "rgba(200, 200, 200, 0.3)",
-        zeroline = FALSE
+        zeroline = FALSE,
+        fixedrange = TRUE
       ),
       yaxis = list(
         title = "Expected Net Benefit per Acre",
         tickprefix = "$",
         range = c(y_range[1] - y_pad, y_range[2] + y_pad),
         gridcolor = "rgba(200, 200, 200, 0.3)",
-        zeroline = FALSE
+        zeroline = FALSE,
+        fixedrange = TRUE
       ),
       # Horizontal line at y=0 (breakeven)
       shapes = list(
@@ -1228,7 +948,7 @@ create_cost_benefit_plot <- function(df) {
           y = 0.02,
           xref = "paper",
           yref = "paper",
-          text = "Unprofitable",
+          text = "Not profitable",
           showarrow = FALSE,
           font = list(color = "rgba(200, 0, 0, 0.5)", size = 14),
           xanchor = "left",
@@ -1244,7 +964,12 @@ create_cost_benefit_plot <- function(df) {
     ) |>
     config(
       displayModeBar = TRUE,
-      modeBarButtonsToRemove = c("lasso2d", "select2d", "autoScale2d"),
+      modeBarButtonsToRemove = c(
+        "lasso2d",
+        "select2d",
+        "hoverClosestCartesian",
+        "hoverCompareCartesian"
+      ),
       displaylogo = FALSE
     )
 }
@@ -1262,6 +987,265 @@ if (FALSE) {
     create_cost_benefit_plot()
 }
 
+
+#' Create the main expected net benefit plot
+#' Expected benefit on X, program name on Y
+#'
+#' @param df Data frame from calculate_all_metrics()
+#' @param opts config for crop. needs $yield_units
+create_benefit_plot <- function(df, opts = list()) {
+  req(nrow(df) > 0)
+
+  # Prepare data for plotting
+  plot_df <- df |>
+    mutate(
+      label = sprintf(
+        "%s %s<br>%s/ac",
+        program_name,
+        application_rate,
+        scales::dollar(total_cost)
+      ) |>
+        fct_reorder(exp_net_benefit)
+    ) |>
+    build_extra_plotly_data(opts$yield_units)
+
+  # Calculate x-axis range for the shaded negative region
+  x_min <- min(plot_df$exp_net_benefit_low, 0, na.rm = TRUE)
+  x_max <- max(plot_df$exp_net_benefit_high, 0, na.rm = TRUE)
+  x_pad <- (x_max - x_min) * 0.1
+
+  # Build plot
+  p <- plot_df |>
+    plot_ly() |>
+    # Points with error bars
+    add_trace(
+      type = "scatter",
+      mode = "markers",
+      x = ~exp_net_benefit,
+      y = ~label,
+      error_x = list(
+        type = "data",
+        symmetric = FALSE,
+        arrayminus = ~ (exp_net_benefit - exp_net_benefit_low),
+        array = ~ (exp_net_benefit_high - exp_net_benefit),
+        color = ~marker_color,
+        thickness = 1.5
+      ),
+      marker = list(
+        size = 15,
+        color = ~marker_color,
+        line = list(color = "black", width = 1),
+        opacity = 1
+      ),
+      text = ~hover_text,
+      hoverinfo = "text",
+      showlegend = FALSE
+    ) |>
+    layout(
+      title = list(
+        text = sprintf(
+          "Expected Net Benefit by Fungicide Program (%s)",
+          opts$crop_name
+        ),
+        font = list(size = 16)
+      ),
+      xaxis = list(
+        title = "Expected Net Benefit ($/acre)",
+        tickformat = "$,.0f",
+        zeroline = TRUE,
+        zerolinewidth = 2,
+        zerolinecolor = "rgba(0,0,0,0.3)",
+        range = c(x_min - x_pad, x_max + x_pad),
+        fixedrange = TRUE
+      ),
+      yaxis = list(
+        title = "",
+        categoryorder = "array",
+        categoryarray = levels(plot_df$program_name),
+        fixedrange = TRUE
+      ),
+      # Shaded region for negative values
+      shapes = list(
+        list(
+          type = "rect",
+          x0 = x_min - x_pad,
+          x1 = 0,
+          y0 = -1,
+          y1 = nrow(plot_df),
+          fillcolor = "rgba(255, 0, 0, 0.05)",
+          line = list(width = 0),
+          layer = "below"
+        )
+      ),
+      margin = list(l = 180, r = 50, t = 60, b = 50),
+      hoverlabel = list(
+        bgcolor = "white",
+        font = list(size = 12)
+      )
+    ) |>
+    plotly::config(
+      displayModeBar = TRUE,
+      displaylogo = FALSE,
+      modeBarButtonsToRemove = c(
+        "lasso2d",
+        "select2d",
+        "hoverClosestCartesian",
+        "hoverCompareCartesian"
+      )
+    )
+
+  p
+}
+
+# examples
+if (FALSE) {
+  calculate_all_metrics(
+    programs_df = corn_programs,
+    costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
+    yield = 180,
+    price = 5,
+    disease_severity = 0.05,
+    appl_cost = 10
+  ) |>
+    create_benefit_plot("Corn")
+}
+
+
+#' Create a summary card plot showing key metrics
+#' Optional visualization showing top program recommendation.
+#'
+#' @param results_df Data frame from calculate_all_metrics()
+#' @return plotly object (gauge or indicator style)
+# create_summary_gauge <- function(results_df) {
+#   if (nrow(results_df) == 0) {
+#     return(NULL)
+#   }
+
+#   top_program <- results_df[1, ]
+
+#   plot_ly(
+#     type = "indicator",
+#     mode = "gauge+number+delta",
+#     value = top_program$breakeven_prob * 100,
+#     title = list(
+#       text = sprintf(
+#         "Top Pick: %s<br><span style='font-size:0.8em'>Breakeven Probability</span>",
+#         top_program$program_name
+#       )
+#     ),
+#     delta = list(reference = 50, suffix = "%"),
+#     gauge = list(
+#       axis = list(range = c(0, 100), ticksuffix = "%"),
+#       bar = list(color = COLORS$primary),
+#       steps = list(
+#         list(range = c(0, 50), color = "rgba(255,0,0,0.1)"),
+#         list(range = c(50, 100), color = "rgba(0,255,0,0.1)")
+#       ),
+#       threshold = list(
+#         line = list(color = "black", width = 2),
+#         thickness = 0.75,
+#         value = 50
+#       )
+#     ),
+#     number = list(suffix = "%")
+#   ) |>
+#     plotly::layout(
+#       margin = list(l = 30, r = 30, t = 80, b = 30)
+#     )
+# }
+
+# # examples
+# if (FALSE) {
+#   calculate_all_metrics(
+#     programs_df = corn_programs,
+#     costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
+#     yield = 180,
+#     price = 5,
+#     disease_severity = 0.05,
+#     appl_cost = 10
+#   ) |>
+#     create_summary_gauge()
+# }
+
+#' Shows programs as vertical bars instead of horizontal.
+#' Useful when there are many programs.
+#'
+#' @param results_df Data frame from calculate_all_metrics()
+#' @param crop_name Display name for the crop
+#' @return plotly object
+# create_vertical_bar_plot <- function(results_df, crop_name) {
+#   if (nrow(results_df) == 0) {
+#     return(plotly::plot_ly() |> plotly::layout(title = "No data"))
+#   }
+
+#   plot_df <- results_df |>
+#     mutate(
+#       rank = row_number(),
+#       bar_color = if_else(rank <= 3, COLORS$primary, COLORS$secondary),
+#       label = paste0(program_name, "\n(", application_rate, ")")
+#     )
+
+#   # Order by benefit descending
+#   plot_df$label <- factor(
+#     plot_df$label,
+#     levels = plot_df$label[order(-plot_df$exp_net_benefit)]
+#   )
+
+#   plot_ly(plot_df, x = ~label) |>
+#     add_trace(
+#       type = "bar",
+#       y = ~exp_net_benefit,
+#       error_y = list(
+#         type = "data",
+#         symmetric = FALSE,
+#         arrayminus = ~ (exp_net_benefit - exp_net_benefit_low),
+#         array = ~ (exp_net_benefit_high - exp_net_benefit)
+#       ),
+#       marker = list(color = ~bar_color),
+#       hovertemplate = paste0(
+#         "<b>%{x}</b><br>",
+#         "Expected: %{y:$,.2f}<br>",
+#         "<extra></extra>"
+#       )
+#     ) |>
+#     plotly::layout(
+#       title = sprintf("Expected Net Benefit (%s)", crop_name),
+#       xaxis = list(
+#         title = "",
+#         tickangle = -45
+#       ),
+#       yaxis = list(
+#         title = "Expected Net Benefit ($/acre)",
+#         tickformat = "$,.0f",
+#         zeroline = TRUE,
+#         zerolinewidth = 2
+#       ),
+#       shapes = list(
+#         list(
+#           type = "line",
+#           x0 = -0.5,
+#           x1 = nrow(plot_df) - 0.5,
+#           y0 = 0,
+#           y1 = 0,
+#           line = list(color = "black", width = 1, dash = "dash")
+#         )
+#       ),
+#       margin = list(b = 120)
+#     )
+# }
+
+# # examples
+# if (FALSE) {
+#   calculate_all_metrics(
+#     programs_df = corn_programs,
+#     costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
+#     yield = 180,
+#     price = 5,
+#     disease_severity = 0.05,
+#     appl_cost = 10
+#   ) |>
+#     create_vertical_bar_plot("Corn")
+# }
 
 # Source modules ---------------------------------------------------------------
 

@@ -1,13 +1,20 @@
 # server.R
 
 server <- function(input, output, session) {
-  # corn module server
-  # crop_server("corn", corn_programs, OPTS$corn)
+  # start all the module servers
   OPTS$corn$server()
-
-  # soy module server
   OPTS$soy$server()
+  OPTS$alfalfa$server()
 
-  # alfalfa module server
-  alfalfa_server("alfalfa", alfalfa_programs)
+  # Show about modal ----
+  observe({
+    showModal(modalDialog(
+      title = "About This Calculator",
+      includeMarkdown("data/about.md"),
+      footer = modalButton("Close"),
+      easyClose = TRUE,
+      size = "l"
+    ))
+  }) |>
+    bindEvent(input$about)
 }

@@ -22,30 +22,27 @@ crop_ui <- function(module_id, programs, opts) {
           # Yield input
           enhanced_numeric_input(
             inputId = ns("yield"),
-            label = paste("Expected Yield (bu/ac)"),
-            info = "Typical yield, absent any disease pressure",
-            required = TRUE,
+            label = "Expected Yield (bu/ac)",
             placeholder = "Enter a valid yield",
-            opts$yield_input
+            required = TRUE,
+            opts$yield_numeric_input
           ),
 
           # Sale price input
           enhanced_numeric_input(
             inputId = ns("price"),
             label = sprintf("Sale Price ($/bushel)"),
-            info = "Expected sale price of harvested grain",
-            required = TRUE,
             placeholder = "Enter a valid price",
-            opts$price_input
+            required = TRUE,
+            opts$price_numeric_input
           ),
 
           # Disease severity selection
           enhanced_radio_buttons(
             inputId = ns("ds_preset"),
             label = "Disease Severity",
-            choices = opts$disease_severity_choices,
             inline = TRUE,
-            info = "Expected yield loss absent any fungicide program"
+            opts$severity_radio_input
           ),
 
           # Custom disease severity slider (conditional)
@@ -56,8 +53,7 @@ crop_ui <- function(module_id, programs, opts) {
               inputId = ns("ds_slider"),
               label = "Custom Disease Severity:",
               post = "%",
-              info = "Expected yield loss absent any fungicide program",
-              opts$disease_severity_slider
+              opts$severity_slider_input
             )
           )
         )
@@ -65,7 +61,7 @@ crop_ui <- function(module_id, programs, opts) {
 
       # Treatment costs
       card(
-        card_title(" Treatment Costs ($/acre)"),
+        card_title(costs_ui_title),
         card_body(
           uiOutput(ns("costs_ui"))
         )
@@ -204,14 +200,14 @@ crop_server <- function(module_id, programs, opts) {
     output$plot1 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
-      create_cost_benefit_plot(df)
+      create_cost_benefit_plot(df, opts)
     })
 
     # ranked programs plot
     output$plot2 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
-      create_benefit_plot(df, opts$crop_name)
+      create_benefit_plot(df, opts)
     })
 
     # output$plot3 <- plotly::renderPlotly({
@@ -231,7 +227,7 @@ crop_server <- function(module_id, programs, opts) {
     output$table <- DT::renderDT({
       df <- results()
       req(nrow(df) > 0)
-      build_results_dt(df, opts$crop_name)
+      build_results_dt(df, opts)
     })
   }) # end server
 }

@@ -6,7 +6,8 @@
 
 #' @param module_id:string module id
 #' @param programs:tibble fung program df for alfalfa
-alfalfa_ui <- function(module_id, programs) {
+#' @param opts:list config for crop
+alfalfa_ui <- function(module_id, programs, opts) {
   ns <- NS(module_id)
 
   # layout_sidebar ----
@@ -25,30 +26,30 @@ alfalfa_ui <- function(module_id, programs) {
           enhanced_numeric_input(
             inputId = ns("hay_price"),
             label = "Hay Price ($/ton)",
-            info = "Expected sale price of hay",
-            required = TRUE,
             placeholder = "Enter a valid price",
+            required = TRUE,
             value = 200,
             min = 100,
             max = 300,
-            step = 1
+            step = 1,
+            info = "Expected sale price of hay"
           ),
 
           # Cutting duration
           enhanced_radio_buttons(
             inputId = ns("cutting_duration"),
             label = "Cutting Duration",
-            choices = c("30 days" = "30", "40 days" = "40"),
-            selected = "40",
             inline = TRUE,
-            info = "Number of days between cuttings"
+            choices = c("30 days" = "30", "40 days" = "40"),
+            selected = "30",
+            info = "Number of days between cuttings, if first cut use 30"
           ),
 
           # RFQ
           enhanced_slider_input(
             inputId = ns("rfq"),
             label = "Alfalfa RFQ",
-            info = "Relative forage quality",
+            info = "Expected relative forage quality",
             value = 150,
             min = 135,
             max = 220,
@@ -59,7 +60,7 @@ alfalfa_ui <- function(module_id, programs) {
           enhanced_slider_input(
             inputId = ns("defoliation"),
             label = "Defoliation Level",
-            info = "Percent defoliation observed (0-28)",
+            info = "Expected defoliation level on the day of cutting",
             value = 5,
             min = 0,
             max = 28,
@@ -70,7 +71,7 @@ alfalfa_ui <- function(module_id, programs) {
 
       # Treatment costs
       card(
-        card_title("Treatment Costs ($/acre)"),
+        card_title(costs_ui_title),
         card_body(
           uiOutput(ns("costs_ui"))
         )
@@ -93,16 +94,6 @@ alfalfa_ui <- function(module_id, programs) {
         icon = bsicons::bs_icon("bar-chart-fill"),
         plotlyOutput(ns("plot2"), height = "500px")
       ),
-      # nav_panel(
-      #   title = "Chart 3",
-      #   icon = bsicons::bs_icon("bar-chart-fill"),
-      #   plotlyOutput(ns("plot3"), height = "500px")
-      # ),
-      # nav_panel(
-      #   title = "Chart 4",
-      #   icon = bsicons::bs_icon("bar-chart-fill"),
-      #   plotlyOutput(ns("plot4"), height = "500px")
-      # ),
 
       # Table tab
       nav_panel(
@@ -116,7 +107,8 @@ alfalfa_ui <- function(module_id, programs) {
 
 #' @param module_id:string module id
 #' @param programs:tibble fung programs df for alfalfa
-alfalfa_server <- function(module_id, programs) {
+#' @param opts:list config for crop
+alfalfa_server <- function(module_id, programs, opts) {
   moduleServer(module_id, function(input, output, session) {
     ns <- session$ns
     program_ids <- programs$program_id
@@ -190,14 +182,14 @@ alfalfa_server <- function(module_id, programs) {
     output$plot1 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
-      create_cost_benefit_plot(df)
+      create_cost_benefit_plot(df, opts)
     })
 
     # ranked programs plot
     output$plot2 <- plotly::renderPlotly({
       df <- results()
       req(nrow(df) > 0)
-      create_benefit_plot(df, "Alfalfa")
+      create_benefit_plot(df, opts)
     })
 
     # output$plot3 <- plotly::renderPlotly({
@@ -216,7 +208,7 @@ alfalfa_server <- function(module_id, programs) {
     output$table <- DT::renderDT({
       df <- results()
       req(nrow(df) > 0)
-      build_results_dt(df, "Alfalfa")
+      build_results_dt(df, opts)
     })
   })
 }

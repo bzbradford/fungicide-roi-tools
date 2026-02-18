@@ -5,7 +5,7 @@ account: bbradford
 server: connect.doit.wisc.edu
 hostUrl: https://connect.doit.wisc.edu/__api__
 appId: 573
-bundleId: 4505
+bundleId: 4515
 url: https://connect.doit.wisc.edu/roi-tools/
 version: 1
 asMultiple: FALSE

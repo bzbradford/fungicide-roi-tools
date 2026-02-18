@@ -42,20 +42,18 @@ ui <- page_navbar(
     title = "Alfalfa",
     value = "alfalfa",
     icon = icon("pagelines"),
-    alfalfa_ui("alfalfa", alfalfa_programs)
+    OPTS$alfalfa$ui()
   ),
 
   # add other crop tabs here #
 
-  # About tab
-  nav_panel(
-    title = "About",
-    icon = icon("circle-question"),
-    card(
-      card_header("About This Calculator"),
-      card_body(
-        includeMarkdown("data/about.md")
-      )
+  nav_spacer(),
+  nav_item(
+    actionLink(
+      inputId = "about",
+      label = "More information",
+      icon = icon("circle-question"),
+      style = "color: white; text-decoration: none; font-size: medium;"
     )
   )
 )
