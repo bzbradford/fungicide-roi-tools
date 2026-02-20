@@ -2,9 +2,10 @@
 
 # UI function for crop analysis module
 #' @param module_id namespace id for module instance
-#' @param programs list of fungicide programs and params
 #' @param opts named list of options for inputs etc
-crop_ui <- function(module_id, programs, opts) {
+crop_ui <- function(module_id, opts = OPTS[[module_id]]) {
+  stopifnot(!is.null(opts))
+
   ns <- NS(module_id)
 
   # layout_sidebar ----
@@ -73,27 +74,19 @@ crop_ui <- function(module_id, programs, opts) {
       id = ns("results_tabs"),
       full_screen = TRUE,
 
-      # Chart tabs
+      # Cost v benefit scatterplot
       nav_panel(
         title = "Cost vs Benefit",
         icon = bsicons::bs_icon("bar-chart-fill"),
         plotlyOutput(ns("plot1"), height = "500px")
       ),
+
+      # ranked programs plot
       nav_panel(
         title = "Ranked Programs",
         icon = bsicons::bs_icon("bar-chart-fill"),
         plotlyOutput(ns("plot2"), height = "500px")
       ),
-      # nav_panel(
-      #   title = "Chart 3",
-      #   icon = bsicons::bs_icon("bar-chart-fill"),
-      #   plotlyOutput(ns("plot3"), height = "500px")
-      # ),
-      # nav_panel(
-      #   title = "Chart 4",
-      #   icon = bsicons::bs_icon("bar-chart-fill"),
-      #   plotlyOutput(ns("plot4"), height = "500px")
-      # ),
 
       # Table tab
       nav_panel(
@@ -110,7 +103,13 @@ crop_ui <- function(module_id, programs, opts) {
 #' @param module_id module namespace ID
 #' @param programs data frame of programs from {crop}_programs.csv
 #' @param opts crop-specific configuration
-crop_server <- function(module_id, programs, opts) {
+crop_server <- function(
+  module_id,
+  programs = PROGRAMS[[module_id]],
+  opts = OPTS[[module_id]]
+) {
+  stopifnot(!is.null(programs), !is.null(opts))
+
   moduleServer(module_id, function(input, output, session) {
     ns <- session$ns
     program_ids <- programs$program_id
@@ -209,18 +208,6 @@ crop_server <- function(module_id, programs, opts) {
       req(nrow(df) > 0)
       create_benefit_plot(df, opts)
     })
-
-    # output$plot3 <- plotly::renderPlotly({
-    #   df <- results()
-    #   req(nrow(df) > 0)
-    #   create_summary_gauge(df)
-    # })
-    #
-    # output$plot4 <- plotly::renderPlotly({
-    #   df <- results()
-    #   req(nrow(df) > 0)
-    #   create_vertical_bar_plot(df, opts$crop_name)
-    # })
 
     # Data table ----
 

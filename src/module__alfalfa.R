@@ -5,9 +5,10 @@
 # - MVN simulation for breakeven (vs normal approximation)
 
 #' @param module_id:string module id
-#' @param programs:tibble fung program df for alfalfa
 #' @param opts:list config for crop
-alfalfa_ui <- function(module_id, programs, opts) {
+alfalfa_ui <- function(module_id = "alfalfa", opts = OPTS[[module_id]]) {
+  stopifnot(!is.null(opts))
+
   ns <- NS(module_id)
 
   # layout_sidebar ----
@@ -83,19 +84,21 @@ alfalfa_ui <- function(module_id, programs, opts) {
       id = ns("results_tabs"),
       full_screen = TRUE,
 
-      # Chart tabs
+      # scatter plot
       nav_panel(
         title = "Cost vs Benefit",
         icon = bsicons::bs_icon("bar-chart-fill"),
         plotlyOutput(ns("plot1"), height = "500px")
       ),
+
+      # ranked programs plot
       nav_panel(
         title = "Ranked Programs",
         icon = bsicons::bs_icon("bar-chart-fill"),
         plotlyOutput(ns("plot2"), height = "500px")
       ),
 
-      # Table tab
+      # data table
       nav_panel(
         title = "Data Table",
         icon = bsicons::bs_icon("table"),
@@ -108,7 +111,13 @@ alfalfa_ui <- function(module_id, programs, opts) {
 #' @param module_id:string module id
 #' @param programs:tibble fung programs df for alfalfa
 #' @param opts:list config for crop
-alfalfa_server <- function(module_id, programs, opts) {
+alfalfa_server <- function(
+  module_id = "alfalfa",
+  programs = PROGRAMS[[module_id]],
+  opts = OPTS[[module_id]]
+) {
+  stopifnot(!is.null(programs), !is.null(opts))
+
   moduleServer(module_id, function(input, output, session) {
     ns <- session$ns
     program_ids <- programs$program_id
@@ -191,18 +200,6 @@ alfalfa_server <- function(module_id, programs, opts) {
       req(nrow(df) > 0)
       create_benefit_plot(df, opts)
     })
-
-    # output$plot3 <- plotly::renderPlotly({
-    #   df <- results()
-    #   req(nrow(df) > 0)
-    #   create_summary_gauge(df)
-    # })
-    #
-    # output$plot4 <- plotly::renderPlotly({
-    #   df <- results()
-    #   req(nrow(df) > 0)
-    #   create_vertical_bar_plot(df, "Alfalfa")
-    # })
 
     # Data table ----
     output$table <- DT::renderDT({

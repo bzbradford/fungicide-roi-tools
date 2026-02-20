@@ -2,9 +2,9 @@
 
 server <- function(input, output, session) {
   # start all the module servers
-  OPTS$corn$server()
-  OPTS$soy$server()
-  OPTS$alfalfa$server()
+  crop_server("corn")
+  crop_server("soy")
+  alfalfa_server()
 
   # Show about modal ----
   observe({

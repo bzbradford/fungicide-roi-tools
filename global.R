@@ -8,12 +8,9 @@ suppressPackageStartupMessages({
   library(markdown)
   library(shiny)
   library(bslib)
-  library(bsicons)
   library(plotly)
   library(DT)
-  library(mvtnorm) # for alfalfa
 })
-
 
 # Dev ----
 
@@ -35,24 +32,25 @@ round_to <- function(x, y = 5) {
   round(x / y) * y
 }
 
-source("enhanced_inputs.R")
-
 
 # Setup -------------------------------------------------------------------
 
-corn_programs <- read_csv("data/corn-programs-v2.csv", show_col_types = FALSE)
-soy_programs <- read_csv("data/soybean-programs-v2.csv", show_col_types = FALSE)
-alfalfa_programs <- read_csv(
-  "data/alfalfa-programs.csv",
-  show_col_types = FALSE
-)
+# create rds of fungicide programs
+if (FALSE) {
+  programs_in <- list(
+    corn = read_csv("data/corn-programs.csv", show_col_types = FALSE),
+    soy = read_csv("data/soybean-programs.csv", show_col_types = FALSE),
+    alfalfa = read_csv("data/alfalfa-programs.csv", show_col_types = FALSE)
+  )
+  programs_in |> saveRDS("data/programs.rds")
+}
+
+PROGRAMS <- readRDS("data/programs.rds")
 
 # input configs for each module
 OPTS <- list(
-  corn = lst(
+  corn = list(
     slug = "corn",
-    ui = \() crop_ui(slug, corn_programs, OPTS$corn),
-    server = \() crop_server(slug, corn_programs, OPTS$corn),
     crop_name = "Corn",
     yield_units = "bu/ac",
     yield_numeric_input = list(
@@ -85,10 +83,8 @@ OPTS <- list(
       info = "Expected disease severity on ear leaf at the end of the season"
     )
   ),
-  soy = lst(
+  soy = list(
     slug = "soy",
-    ui = \() crop_ui(slug, soy_programs, OPTS$soy),
-    server = \() crop_server(slug, soy_programs, OPTS$soy),
     crop_name = "Soybean",
     yield_units = "bu/ac",
     yield_numeric_input = list(
@@ -121,14 +117,15 @@ OPTS <- list(
       info = "Expected white mold severity at the end of the season"
     )
   ),
-  alfalfa = lst(
+  alfalfa = list(
     slug = "alfalfa",
-    ui = \() alfalfa_ui(slug, alfalfa_programs, OPTS$alfalfa),
-    server = \() alfalfa_server(slug, alfalfa_programs, OPTS$alfalfa),
     crop_name = "Alfalfa",
     yield_units = "%"
   )
 )
+
+# make sure the ids match
+stopifnot(setequal(names(PROGRAMS), names(OPTS)))
 
 # for autocomplete
 opts <- OPTS[[1]]
@@ -204,7 +201,7 @@ if (FALSE) {
   )
 
   # In mutate (returns columns automatically):
-  corn_programs |>
+  PROGRAMS$corn |>
     mutate(total_cost = default_cost) |>
     mutate(
       calculate_net_benefit(
@@ -375,7 +372,7 @@ calculate_all_metrics <- function(
 if (FALSE) {
   test_costs <- setNames(c(37, 28, 34), c("1", "2", "3"))
   calculate_all_metrics(
-    programs_df = corn_programs,
+    programs_df = PROGRAMS$corn,
     costs = test_costs,
     yield = 180,
     price = 5,
@@ -735,7 +732,7 @@ build_results_dt <- function(df, opts) {
 if (FALSE) {
   test_costs <- setNames(c(37, 28, 34), c("1", "2", "3"))
   calculate_all_metrics(
-    programs_df = corn_programs,
+    programs_df = PROGRAMS$corn,
     costs = test_costs,
     yield = 180,
     price = 5,
@@ -746,7 +743,7 @@ if (FALSE) {
 
   # when it doesn't have a yield benefit column (eg alfalfa)
   calculate_all_metrics(
-    programs_df = corn_programs,
+    programs_df = PROGRAMS$corn,
     costs = test_costs,
     yield = 180,
     price = 5,
@@ -870,8 +867,14 @@ create_cost_benefit_plot <- function(df, opts = list()) {
     ) |>
     # Layout
     layout(
+      # margin = list(t = 80, b = 60, l = 70, r = 20),
+      margin = list(t = 50, b = 10, l = 10, r = 10),
       title = list(
-        text = "<b>Cost vs. Expected Net Benefit</b><br><sup>Hover mouse over individual points for more information</sup>",
+        text = sprintf(
+          "<b>Cost vs. Expected Net Benefit (%s)</b><br><sup>Hover mouse of individual points for more information</sup>",
+          opts$crop_name
+        ),
+        font = list(size = 18),
         x = 0.02,
         xanchor = "left"
       ),
@@ -959,8 +962,7 @@ create_cost_benefit_plot <- function(df, opts = list()) {
         bgcolor = "white",
         bordercolor = "gray",
         font = list(size = 12)
-      ),
-      margin = list(t = 80, b = 60, l = 70, r = 20)
+      )
     ) |>
     config(
       displayModeBar = TRUE,
@@ -977,7 +979,7 @@ create_cost_benefit_plot <- function(df, opts = list()) {
 # examples
 if (FALSE) {
   calculate_all_metrics(
-    programs_df = corn_programs,
+    programs_df = PROGRAMS$corn,
     costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
     yield = 180,
     price = 5,
@@ -1042,12 +1044,15 @@ create_benefit_plot <- function(df, opts = list()) {
       showlegend = FALSE
     ) |>
     layout(
+      margin = list(t = 50, b = 10, l = 10, r = 10),
       title = list(
         text = sprintf(
-          "Expected Net Benefit by Fungicide Program (%s)",
+          "<b>Expected Net Benefit by Fungicide Program (%s)</b><br><sup>Hover mouse of individual points for more information</sup>",
           opts$crop_name
         ),
-        font = list(size = 16)
+        font = list(size = 18),
+        x = 0.02,
+        xanchor = "left"
       ),
       xaxis = list(
         title = "Expected Net Benefit ($/acre)",
@@ -1077,7 +1082,6 @@ create_benefit_plot <- function(df, opts = list()) {
           layer = "below"
         )
       ),
-      margin = list(l = 180, r = 50, t = 60, b = 50),
       hoverlabel = list(
         bgcolor = "white",
         font = list(size = 12)
@@ -1100,7 +1104,7 @@ create_benefit_plot <- function(df, opts = list()) {
 # examples
 if (FALSE) {
   calculate_all_metrics(
-    programs_df = corn_programs,
+    programs_df = PROGRAMS$corn,
     costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
     yield = 180,
     price = 5,
@@ -1157,7 +1161,7 @@ if (FALSE) {
 # # examples
 # if (FALSE) {
 #   calculate_all_metrics(
-#     programs_df = corn_programs,
+#     programs_df = PROGRAMS$corn,
 #     costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
 #     yield = 180,
 #     price = 5,
@@ -1237,7 +1241,7 @@ if (FALSE) {
 # # examples
 # if (FALSE) {
 #   calculate_all_metrics(
-#     programs_df = corn_programs,
+#     programs_df = PROGRAMS$corn,
 #     costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
 #     yield = 180,
 #     price = 5,
@@ -1249,5 +1253,4 @@ if (FALSE) {
 
 # Source modules ---------------------------------------------------------------
 
-source("module__crop.R")
-source("module__alfalfa.R")
+list.files("src", "*.R", full.names = TRUE) |> lapply(source)

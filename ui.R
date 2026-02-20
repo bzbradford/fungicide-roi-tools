@@ -25,8 +25,7 @@ ui <- page_navbar(
     title = "Corn",
     value = "corn",
     icon = icon("seedling"),
-    # crop_ui("corn", corn_programs, OPTS$corn)
-    OPTS$corn$ui()
+    crop_ui("corn")
   ),
 
   # Soybean
@@ -34,7 +33,7 @@ ui <- page_navbar(
     title = "Soybean (White Mold)",
     value = "soybean",
     icon = icon("leaf"),
-    OPTS$soy$ui()
+    crop_ui("soy")
   ),
 
   # Alfalfa
@@ -42,7 +41,7 @@ ui <- page_navbar(
     title = "Alfalfa",
     value = "alfalfa",
     icon = icon("pagelines"),
-    OPTS$alfalfa$ui()
+    alfalfa_ui()
   ),
 
   # add other crop tabs here #
