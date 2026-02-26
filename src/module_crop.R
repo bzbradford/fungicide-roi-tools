@@ -1,4 +1,133 @@
-# General interface for corn and soy
+# Economics functions ----------------------------------------------------------
+
+#' Calculate expected net benefit for all estimate types at once
+#'
+#' @param inputs list with inputs from interface
+#' @param cost cost of treatment
+#' @param params row from programs df
+#' @return tibble
+calc_benefit <- function(
+  inputs,
+  cost,
+  params
+) {
+  # from programs df
+  b0 <- params$b0
+  b0_se <- params$b0_se
+  b1 <- params$b1
+  b1_se <- params$b1_se
+  theta <- params$theta
+
+  # from interface
+  yield <- inputs$yield
+  price <- inputs$price
+  ds <- inputs$disease_severity
+
+  # calculate yield change
+  calc_yield <- function(b0, b1) {
+    yield * (b0 + b1 * (1 - theta) * ds)
+  }
+
+  # breakeven probability
+  mean_benefit <- b0 + b1 * (1 - theta) * ds
+
+  # Approximate SE using delta method (simplified)
+  se_benefit <- sqrt(b0_se^2 + (ds * (1 - theta))^2 * b1_se^2)
+
+  # Generate draws (truncated at 0 for yield benefit)
+  be_sims <- 10000
+  be_threshold <- cost / (price * yield)
+  be_probs <- pmax(0, rnorm(be_sims, mean_benefit, se_benefit))
+
+  tibble(
+    yield_benefit = calc_yield(b0, b1),
+    yield_benefit_low = calc_yield(b0 - b0_se, b1 - b1_se),
+    yield_benefit_high = calc_yield(b0 + b0_se, b1 + b1_se),
+    net_benefit = yield_benefit * price - cost,
+    net_benefit_low = yield_benefit_low * price - cost,
+    net_benefit_high = yield_benefit_high * price - cost,
+    breakeven_cost = net_benefit + cost,
+    breakeven_prob = mean(be_probs > be_threshold)
+  )
+}
+
+# test
+if (FALSE) {
+  calc_benefit(
+    inputs = list(
+      yield = 180,
+      price = 5,
+      disease_severity = 0.05
+    ),
+    cost = 37,
+    params = list(
+      b0 = 0.044,
+      b1 = -0.028,
+      b0_se = 0.017,
+      b1_se = 0.015,
+      theta = 0.455
+    )
+  )
+}
+
+
+#' Calculate all economic metrics for a programs data frame
+#'
+#' @param programs programs df
+#' @param costs named costs list by program id
+#' @param appl_cost base cost to add for each app
+#' @param inputs inputs collected from the interface and passed to calc_benefit_alfalfa
+#' @return Data frame with all economic results, sorted by expected net benefit
+calc_metrics <- function(
+  programs,
+  costs,
+  appl_cost,
+  inputs
+) {
+  # Filter to active programs with input costs and compute total costs
+  results <- programs |>
+    filter(enabled) |>
+    mutate(product_cost = costs[as.character(program_id)]) |>
+    filter(!is.na(product_cost)) |>
+    mutate(
+      application_cost = appl_cost * n_appl,
+      total_cost = product_cost + application_cost
+    )
+
+  if (nrow(results) == 0) {
+    return(results)
+  }
+
+  results |>
+    rowwise() |>
+    mutate(
+      calc_benefit(
+        inputs = inputs,
+        cost = total_cost,
+        params = pick(everything())
+      ),
+    ) |>
+    ungroup()
+}
+
+# examples
+if (FALSE) {
+  test_costs <- setNames(c(37, 28, 34), c("1", "2", "3"))
+  calc_metrics(
+    programs = PROGRAMS$corn,
+    costs = test_costs,
+    appl_cost = 10,
+    inputs = list(
+      yield = 180,
+      price = 5,
+      disease_severity = 0.05
+    )
+  ) |>
+    glimpse()
+}
+
+
+# Corn and soy interface -------------------------------------------------------
 
 # UI function for crop analysis module
 #' @param module_id namespace id for module instance
@@ -20,33 +149,24 @@ crop_ui <- function(module_id, opts = OPTS[[module_id]]) {
       card(
         card_title("Yield and Disease Pressure"),
         card_body(
-          # Yield input
-          enhanced_numeric_input(
+          enhanced_slider_input(
             inputId = ns("yield"),
             label = "Expected Yield (bu/ac)",
             placeholder = "Enter a valid yield",
-            required = TRUE,
             opts$yield_numeric_input
           ),
-
-          # Sale price input
-          enhanced_numeric_input(
+          enhanced_slider_input(
             inputId = ns("price"),
             label = sprintf("Sale Price ($/bushel)"),
             placeholder = "Enter a valid price",
-            required = TRUE,
             opts$price_numeric_input
           ),
-
-          # Disease severity selection
           enhanced_radio_buttons(
             inputId = ns("ds_preset"),
             label = "Disease Severity",
             inline = TRUE,
             opts$severity_radio_input
           ),
-
-          # Custom disease severity slider (conditional)
           conditionalPanel(
             condition = sprintf("input['%s'] == 'custom'", "ds_preset"),
             ns = ns,
@@ -98,8 +218,9 @@ crop_ui <- function(module_id, opts = OPTS[[module_id]]) {
   )
 } # end ui
 
-#' Server function for crop analysis module
-#'
+
+# Corn and soy server ----------------------------------------------------------
+
 #' @param module_id module namespace ID
 #' @param programs data frame of programs from {crop}_programs.csv
 #' @param opts crop-specific configuration
@@ -165,17 +286,18 @@ crop_server <- function(
     ## results reactive ----
     # calculate results when inputs are available
     results <- reactive({
-      yield <- input$yield
-      price <- input$price
-      ds <- disease_severity()
-      appl_cost <- input$appl_cost
+      inputs <- list(
+        yield = input$yield,
+        price = input$price,
+        disease_severity = disease_severity()
+      )
       current_costs <- costs()
+      appl_cost <- input$appl_cost
 
       # check required inputs
-      req(input$ready)
       validate(
-        need(yield, label = "Yield"),
-        need(price, label = "Price"),
+        need(input$ready, label = "Please wait..."),
+        need(!any(is.na(inputs)), label = "Missing input values"),
         need(appl_cost, label = "Base application cost"),
         need(
           !all(is.na(current_costs)),
@@ -183,13 +305,11 @@ crop_server <- function(
         )
       )
 
-      calculate_all_metrics(
+      calc_metrics(
         programs = programs,
         costs = current_costs,
-        yield = yield,
-        price = price,
-        disease_severity = ds,
-        appl_cost = appl_cost
+        appl_cost = appl_cost,
+        inputs = inputs
       )
     })
 

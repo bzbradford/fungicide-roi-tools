@@ -3,7 +3,7 @@
 #' Provides enhanced versions of numericInput, sliderInput, and radioButtons
 #' with optional info tooltips and reset functionality.
 
-# --- Shared Internal Functions ---
+# Functions --------------------------------------------------------------------
 
 .build_input_header <- function(
   inputId,
@@ -73,11 +73,8 @@
   )
 }
 
-dots2env <- function(dots, env) {
-  env_bind(env, !!!list_flatten(dots))
-}
 
-# --- Enhanced Numeric Input (Custom Binding) ---
+# Numeric input ----------------------------------------------------------------
 
 #' @param required Logical or NULL. If TRUE, empty input shows red background.
 #'   If FALSE, empty input shows grey background. If NULL (default), no special
@@ -98,6 +95,7 @@ enhanced_numeric_input <- function(
   show_reset = TRUE,
   reset_tooltip = paste("Reset to", value)
 ) {
+  # define any named values in ... into the local env
   env_bind(current_env(), !!!list_flatten(list(...)))
 
   info <- paste(
@@ -162,7 +160,7 @@ enhanced_numeric_input <- function(
 }
 
 
-# --- Enhanced Slider Input ---
+# Slider input -----------------------------------------------------------------
 
 enhanced_slider_input <- function(
   inputId,
@@ -220,7 +218,7 @@ enhanced_slider_input <- function(
 }
 
 
-# --- Enhanced Radio Buttons ---
+# Radio buttons ----------------------------------------------------------------
 
 enhanced_radio_buttons <- function(
   inputId,
@@ -276,7 +274,7 @@ enhanced_radio_buttons <- function(
 }
 
 
-# --- Enhanced Select Input ---
+# Select input -----------------------------------------------------------------
 
 enhanced_select_input <- function(
   inputId,
@@ -330,7 +328,7 @@ enhanced_select_input <- function(
 }
 
 
-# --- Enhanced Text Input ---
+# Text input -------------------------------------------------------------------
 
 enhanced_text_input <- function(
   inputId,
@@ -366,7 +364,8 @@ enhanced_text_input <- function(
 }
 
 
-# --- Enhanced Checkbox Input ---
+# Checkbox input ---------------------------------------------------------------
+
 enhanced_checkbox_input <- function(
   inputId,
   ...,
