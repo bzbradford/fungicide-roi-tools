@@ -207,11 +207,9 @@ build_costs_ui <- function(programs, ns) {
   )
 }
 
-#' @param df results df from `calculate_all_metrics()`
-#' @param opts:list config for the crop
+#' @param df results df from `calc_metrics()` or `calc_metrics_alfalfa()`
+#' @param opts list config for the crop
 build_results_dt <- function(df, opts) {
-  dollar <- function(x) sprintf("$%.2f", x)
-
   yield_col <- sprintf("Yield Preserved (%s)", opts$yield_units)
   display_df <- df |>
     arrange(desc(net_benefit)) |>
@@ -265,13 +263,11 @@ build_results_dt <- function(df, opts) {
 
 if (FALSE) {
   test_costs <- setNames(c(37, 28, 34), c("1", "2", "3"))
-  calculate_all_metrics(
-    programs_df = PROGRAMS$corn,
+  calc_metrics(
+    programs = PROGRAMS$corn,
     costs = test_costs,
-    yield = 180,
-    price = 5,
-    disease_severity = 0.05,
-    appl_cost = 10
+    appl_cost = 10,
+    inputs = list(yield = 180, price = 5, disease_severity = 0.05)
   ) |>
     build_results_dt(opts = OPTS$corn)
 }

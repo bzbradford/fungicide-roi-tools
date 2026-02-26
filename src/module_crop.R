@@ -76,8 +76,8 @@ if (FALSE) {
 #' @param programs programs df
 #' @param costs named costs list by program id
 #' @param appl_cost base cost to add for each app
-#' @param inputs inputs collected from the interface and passed to calc_benefit_alfalfa
-#' @return Data frame with all economic results, sorted by expected net benefit
+#' @param inputs inputs collected from the interface and passed to calc_benefit
+#' @return Data frame with all economic results
 calc_metrics <- function(
   programs,
   costs,

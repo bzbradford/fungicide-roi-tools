@@ -54,7 +54,7 @@ build_extra_plotly_data <- function(df, yield_units) {
 }
 
 #' Scatter plot with program cost on X and expected benefit on Y
-#' @param df from calculate_all_metrics()
+#' @param df from calc_metrics()
 #' @param opts config for crop. needs $yield_units
 create_cost_benefit_plot <- function(df, opts = list()) {
   req(nrow(df) > 0)
@@ -101,7 +101,7 @@ create_cost_benefit_plot <- function(df, opts = list()) {
       margin = list(t = 50, b = 10, l = 10, r = 10),
       title = list(
         text = sprintf(
-          "<b>Cost vs. Expected Net Benefit (%s)</b><br><sup>Hover mouse of individual points for more information</sup>",
+          "<b>Cost vs. Expected Net Benefit (%s)</b><br><sup>Hover mouse over individual points for more information</sup>",
           opts$crop_name
         ),
         font = list(size = 18),
@@ -208,22 +208,20 @@ create_cost_benefit_plot <- function(df, opts = list()) {
 
 # examples
 if (FALSE) {
-  calculate_all_metrics(
-    programs_df = PROGRAMS$corn,
+  calc_metrics(
+    programs = PROGRAMS$corn,
     costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
-    yield = 180,
-    price = 5,
-    disease_severity = 0.05,
-    appl_cost = 10
+    appl_cost = 10,
+    inputs = list(yield = 180, price = 5, disease_severity = 0.05)
   ) |>
-    create_cost_benefit_plot()
+    create_cost_benefit_plot(opts = OPTS$corn)
 }
 
 
 #' Create the main expected net benefit plot
 #' Expected benefit on X, program name on Y
 #'
-#' @param df Data frame from calculate_all_metrics()
+#' @param df Data frame from calc_metrics()
 #' @param opts config for crop. needs $yield_units
 create_benefit_plot <- function(df, opts = list()) {
   req(nrow(df) > 0)
@@ -277,7 +275,7 @@ create_benefit_plot <- function(df, opts = list()) {
       margin = list(t = 50, b = 10, l = 10, r = 10),
       title = list(
         text = sprintf(
-          "<b>Expected Net Benefit by Fungicide Program (%s)</b><br><sup>Hover mouse of individual points for more information</sup>",
+          "<b>Expected Net Benefit by Fungicide Program (%s)</b><br><sup>Hover mouse over individual points for more information</sup>",
           opts$crop_name
         ),
         font = list(size = 18),
@@ -296,7 +294,7 @@ create_benefit_plot <- function(df, opts = list()) {
       yaxis = list(
         title = "",
         categoryorder = "array",
-        categoryarray = levels(plot_df$program_name),
+        categoryarray = levels(plot_df$label),
         fixedrange = TRUE
       ),
       # Shaded region for negative values
@@ -333,15 +331,13 @@ create_benefit_plot <- function(df, opts = list()) {
 
 # examples
 if (FALSE) {
-  calculate_all_metrics(
-    programs_df = PROGRAMS$corn,
+  calc_metrics(
+    programs = PROGRAMS$corn,
     costs = rnorm(12, mean = 20, sd = 10) |> set_names(1:12),
-    yield = 180,
-    price = 5,
-    disease_severity = 0.05,
-    appl_cost = 10
+    appl_cost = 10,
+    inputs = list(yield = 180, price = 5, disease_severity = 0.05)
   ) |>
-    create_benefit_plot("Corn")
+    create_benefit_plot(opts = OPTS$corn)
 }
 
 #' Create a summary card plot showing key metrics

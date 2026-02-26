@@ -56,8 +56,7 @@ calc_benefit_alfalfa <- function(
   # breakeven probability
   be_sims <- 10000
   betas <- mvtnorm::rmvnorm(be_sims, mean = coefs, sigma = cov_matrix)
-  lin_benefit <- betas *
-    gradient +
+  lin_benefit <- as.vector(betas %*% gradient) +
     rnorm(be_sims, params$residuals_mean, params$residuals_sd)
   be_probs <- hay_price * hay_yield * lin_benefit - cost
 
