@@ -2,7 +2,7 @@
 '$schema' = 'https://cdn.posit.co/publisher/schemas/posit-publishing-record-schema-v3.json'
 server_type = 'connect'
 server_url = 'https://connect.doit.wisc.edu'
-client_version = '1.35.2'
+client_version = '1.35.3'
 created_at = ''
 dismissed_at = ''
 type = 'r-shiny'
@@ -11,9 +11,9 @@ id = '531a7973-1fe6-44d7-b67c-3e4536792f8d'
 dashboard_url = 'https://connect.doit.wisc.edu/connect/#/apps/531a7973-1fe6-44d7-b67c-3e4536792f8d'
 direct_url = 'https://connect.doit.wisc.edu/content/531a7973-1fe6-44d7-b67c-3e4536792f8d/'
 logs_url = 'https://connect.doit.wisc.edu/connect/#/apps/531a7973-1fe6-44d7-b67c-3e4536792f8d/logs'
-deployed_at = '2026-02-26T18:22:16-06:00'
-bundle_id = '4555'
-bundle_url = 'https://connect.doit.wisc.edu/__api__/v1/content/531a7973-1fe6-44d7-b67c-3e4536792f8d/bundles/4555/download'
+deployed_at = '2026-02-27T10:38:30-06:00'
+bundle_id = '4556'
+bundle_url = 'https://connect.doit.wisc.edu/__api__/v1/content/531a7973-1fe6-44d7-b67c-3e4536792f8d/bundles/4556/download'
 files = [
   '.posit/publish/Fungicide ROI Tools-IT5V.toml',
   '.posit/publish/deployments/deployment-B6SC.toml',
@@ -30,6 +30,7 @@ files = [
   'src/module_crop.R',
   'src/plots.R',
   'ui.R',
+  'www/cpn-badge.png',
   'www/script.js',
   'www/seedbag.png',
   'www/style.css'

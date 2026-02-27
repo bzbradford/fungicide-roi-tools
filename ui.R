@@ -1,7 +1,16 @@
 # ui.R
 
 ui <- page_navbar(
-  title = "Fungicide ROI Calculator",
+  title = tagList(
+    a(
+      img(src = "cpn-badge.png"),
+      title = "https://cropprotectionnetwork.org/",
+      href = "https://cropprotectionnetwork.org/",
+      target = "_blank",
+      .noWS = "outside"
+    ),
+    span("Fungicide ROI Calculator", style = "margin-left: 5px;")
+  ),
   id = "nav",
   theme = bs_theme(
     version = 5,

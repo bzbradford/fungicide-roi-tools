@@ -5,6 +5,23 @@
   --bslib-navbar-inverse-bg: #006939;
 }
 
+.navbar {
+  --bs-navbar-padding-y: 5px;
+}
+
+.navbar-brand>* {
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+.navbar-brand img {
+  height: 34px;
+}
+
+.bslib-sidebar-layout>.sidebar>.sidebar-content {
+  padding-top: 1rem;
+}
+
 /* radio button layout and spacing */
 .shiny-options-group {
   display: flex;
@@ -25,7 +42,7 @@
 
 /* --- Enhanced Inputs Styling --- */
 
-.enhanced-input-container > .form-group {
+.enhanced-input-container>.form-group {
   margin-bottom: unset;
 }
 
@@ -78,7 +95,7 @@
 
 /* Hide default Shiny labels since we use our own */
 .enhanced-input-container .control-label,
-.enhanced-input-container > .shiny-input-container > label {
+.enhanced-input-container>.shiny-input-container>label {
   display: none !important;
 }
 
@@ -105,14 +122,18 @@
 
 /* Required field when empty - light red background */
 .enhanced-input-empty-required {
-  background-color: #fee2e2 !important; /* Light red - similar to Bootstrap danger-subtle */
-  border-color: #f87171 !important; /* Slightly darker red border */
+  background-color: #fee2e2 !important;
+  /* Light red - similar to Bootstrap danger-subtle */
+  border-color: #f87171 !important;
+  /* Slightly darker red border */
 }
 
 /* Optional field when empty - light grey background */
 .enhanced-input-empty-optional {
-  background-color: #f3f4f6 !important; /* Light grey */
-  border-color: #d1d5db !important; /* Grey border */
+  background-color: #f3f4f6 !important;
+  /* Light grey */
+  border-color: #d1d5db !important;
+  /* Grey border */
 }
 
 /* Invalid value (out of range) - same as required empty */
@@ -124,12 +145,14 @@
 /* Ensure placeholder text is visible on colored backgrounds */
 .enhanced-input-empty-required::placeholder,
 .enhanced-input-invalid::placeholder {
-  color: #991b1b; /* Dark red for contrast */
+  color: #991b1b;
+  /* Dark red for contrast */
   opacity: 0.7;
 }
 
 .enhanced-input-empty-optional::placeholder {
-  color: #6b7280; /* Grey for contrast */
+  color: #6b7280;
+  /* Grey for contrast */
   opacity: 0.7;
 }
 

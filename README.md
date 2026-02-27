@@ -32,7 +32,7 @@ This tool helps farmers and agronomists evaluate the economic potential of fungi
 
 #### Credits
 
-Economic analysis by Maria Oros (Data Scientist, UW-Madison DSI), and Damon Smith, (Professor, UW-Madison Department of Plant Pathology), UW-Madison. App developed by Maria Oros and Ben Bradford (Researcher, UW-Madison Department of Entomology).
+Economic analysis by Maria Oros (Data Scientist, UW-Madison DSI), and Damon Smith, (Professor, UW-Madison Department of Plant Pathology), UW-Madison. App developed by Ben Bradford (Researcher, UW-Madison Department of Entomology) and Maria Oros.
 
 #### Funding sources
 
@@ -40,4 +40,11 @@ Funding provided in part by the USDA ARS through the National Predictive Modelin
 
 #### Changelog
 
-* Feb 2026 - App overhaul, combining previous three apps into one. Corn economic analysis was updated using tar spot and southern rust field trials from 2019-2025 from corn-producing CPN partner states.
+- Feb 2026
+  - App overhaul, combining previous three apps into one
+  - Updated alfalfa model
+  - Updated corn model using tar spot and southern rust field trials from 2019-2025 from corn-producing CPN partner states
+
+#### Source code
+
+<https://github.com/bzbradford/fungicide-roi-tools>
