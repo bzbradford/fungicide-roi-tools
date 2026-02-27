@@ -10,7 +10,7 @@ server <- function(input, output, session) {
   observe({
     showModal(modalDialog(
       title = "About This Calculator",
-      includeMarkdown("data/about.md"),
+      includeMarkdown("README.md"),
       footer = modalButton("Close"),
       easyClose = TRUE,
       size = "l"
