@@ -73,21 +73,6 @@ calc_benefit_alfalfa <- function(
   )
 }
 
-# test
-if (FALSE) {
-  calc_benefit_alfalfa(
-    inputs = list(
-      hay_yield = 2,
-      hay_price = 100,
-      defoliation = 25,
-      rfq = 150,
-      duration_dummy = 1
-    ),
-    cost = 20,
-    params = PROGRAMS$alfalfa |> slice(1)
-  )
-}
-
 
 #' Calculate all alfalfa metrics, producing output compatible with plotting functions
 #'
@@ -126,23 +111,6 @@ calc_metrics_alfalfa <- function(
       )
     ) |>
     ungroup()
-}
-
-if (FALSE) {
-  test_costs <- setNames(c(37, 28, 34), c("1", "2", "3"))
-  calc_metrics_alfalfa(
-    programs = PROGRAMS$alfalfa,
-    costs = test_costs,
-    appl_cost = 10,
-    inputs = list(
-      hay_yield = 2,
-      hay_price = 100,
-      defoliation = 25,
-      rfq = 150,
-      duration_dummy = 1
-    )
-  ) |>
-    glimpse()
 }
 
 

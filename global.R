@@ -16,10 +16,18 @@ suppressPackageStartupMessages({
 # Dev --------------------------------------------------------------------------
 
 if (FALSE) {
+  # add to renv
+  library(devtools)
+  library(testthat)
+
+  # renv
   renv::init()
   renv::update()
   renv::clean()
   renv::snapshot()
+
+  # Run unit tests
+  testthat::test_dir("tests/testthat")
 }
 
 
@@ -32,8 +40,10 @@ echo <- function(x) {
 }
 
 # rounds to nearest whole multiple of y
-round_to <- function(x, y = 5) {
-  round(x / y) * y
+#' @param x number or vector
+#' @param d divisor to round to
+round_to <- function(x, d = 5) {
+  round(x / d) * d
 }
 
 
@@ -259,17 +269,6 @@ build_results_dt <- function(df, opts) {
       columns = dollar_cols,
       color = DT::styleInterval(0, c(COLORS$negative, "inherit"))
     )
-}
-
-if (FALSE) {
-  test_costs <- setNames(c(37, 28, 34), c("1", "2", "3"))
-  calc_metrics(
-    programs = PROGRAMS$corn,
-    costs = test_costs,
-    appl_cost = 10,
-    inputs = list(yield = 180, price = 5, disease_severity = 0.05)
-  ) |>
-    build_results_dt(opts = OPTS$corn)
 }
 
 

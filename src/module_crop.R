@@ -51,25 +51,6 @@ calc_benefit <- function(
   )
 }
 
-# test
-if (FALSE) {
-  calc_benefit(
-    inputs = list(
-      yield = 180,
-      price = 5,
-      disease_severity = 0.05
-    ),
-    cost = 37,
-    params = list(
-      b0 = 0.044,
-      b1 = -0.028,
-      b0_se = 0.017,
-      b1_se = 0.015,
-      theta = 0.455
-    )
-  )
-}
-
 
 #' Calculate all economic metrics for a programs data frame
 #'
@@ -108,22 +89,6 @@ calc_metrics <- function(
       ),
     ) |>
     ungroup()
-}
-
-# examples
-if (FALSE) {
-  test_costs <- setNames(c(37, 28, 34), c("1", "2", "3"))
-  calc_metrics(
-    programs = PROGRAMS$corn,
-    costs = test_costs,
-    appl_cost = 10,
-    inputs = list(
-      yield = 180,
-      price = 5,
-      disease_severity = 0.05
-    )
-  ) |>
-    glimpse()
 }
 
 
