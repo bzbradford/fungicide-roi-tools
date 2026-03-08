@@ -139,10 +139,10 @@ alfalfa_ui <- function(module_id = "alfalfa", opts = OPTS[[module_id]]) {
             inputId = ns("hay_yield"),
             label = "Hay Yield (dry ton/acre)",
             placeholder = "Enter a valid yield",
-            info = "Expected hay yield",
+            info = "Expected alfalfa dry yield on the next cutting",
             value = 1,
             min = 0.1,
-            max = 5,
+            max = 2,
             step = 0.1
           ),
           enhanced_slider_input(
@@ -150,7 +150,7 @@ alfalfa_ui <- function(module_id = "alfalfa", opts = OPTS[[module_id]]) {
             label = "Hay Price ($/ton)",
             placeholder = "Enter a valid price",
             info = "Expected sale price of hay",
-            value = 200,
+            value = 150,
             min = 100,
             max = 300,
             step = 1
@@ -158,11 +158,11 @@ alfalfa_ui <- function(module_id = "alfalfa", opts = OPTS[[module_id]]) {
           enhanced_slider_input(
             inputId = ns("rfq"),
             label = "Relative Forage Quality",
-            info = "Expected relative forage quality",
+            info = "Expected RFQ at harvest. RFQ is a measure of how much nutritive value is in the feed. An RFQ of 150 or more is typically considered 'Prime'.",
             value = 150,
             min = 100,
-            max = 220,
-            step = 10
+            max = 250,
+            step = 25
           ),
           enhanced_radio_buttons(
             inputId = ns("cutting_duration"),
@@ -175,10 +175,10 @@ alfalfa_ui <- function(module_id = "alfalfa", opts = OPTS[[module_id]]) {
           enhanced_slider_input(
             inputId = ns("defoliation"),
             label = "Defoliation Level",
-            info = "Expected defoliation level on the day of cutting",
+            info = "Expected defoliation due to foliar disease at cutting",
             value = 5,
             min = 0,
-            max = 40,
+            max = 50,
             step = 1
           ),
         )

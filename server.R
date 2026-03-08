@@ -8,13 +8,7 @@ server <- function(input, output, session) {
 
   # Show about modal ----
   observe({
-    showModal(modalDialog(
-      title = "About This Calculator",
-      includeMarkdown("README.md"),
-      footer = modalButton("Close"),
-      easyClose = TRUE,
-      size = "l"
-    ))
+    showModal(about_modal)
   }) |>
     bindEvent(input$about)
 }

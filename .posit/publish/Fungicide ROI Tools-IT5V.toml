@@ -16,7 +16,8 @@ files = [
   '/src',
   '/ui.R',
   '/www',
-  '/README.md'
+  '/README.md',
+  '/docs'
 ]
 title = 'Fungicide ROI Tools'
 

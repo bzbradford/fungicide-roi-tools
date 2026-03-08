@@ -271,6 +271,20 @@ build_results_dt <- function(df, opts) {
     )
 }
 
+about_modal <- modalDialog(
+  title = "About This Tool",
+  footer = modalButton("Close"),
+  easyClose = TRUE,
+  size = "l",
+
+  tabsetPanel(
+    tabPanel("General", includeMarkdown("README.md")),
+    tabPanel("Corn tool", includeMarkdown("docs/about-corn.md")),
+    tabPanel("Soybean tool", includeMarkdown("docs/about-soybean.md")),
+    tabPanel("Alfalfa tool", includeMarkdown("docs/about-alfalfa.md"))
+  )
+)
+
 
 # Source files -----------------------------------------------------------------
 

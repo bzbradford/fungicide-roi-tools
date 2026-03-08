@@ -1,8 +1,9 @@
 /*--- ROI TOOLS ---*/
 
 :root {
-  --bslib-navbar-bg: #006939;
-  --bslib-navbar-inverse-bg: #006939;
+  --bslib-navbar-bg: rgb(0, 105, 57);
+  --bslib-navbar-inverse-bg: rgb(0, 105, 57);
+  --modal-header-bg: rgba(0, 105, 57, 0.75);
 }
 
 .navbar {
@@ -38,6 +39,32 @@
   align-items: end;
   gap: 0.5rem;
   font-size: small;
+}
+
+/* MODAL STYLES */
+.modal-header {
+  background: var(--modal-header-bg);
+}
+
+.modal-title {
+  color: white;
+  font-weight: bold;
+}
+
+.modal-body h2 {
+  font-size: 1.5rem;
+}
+
+.modal-body h3 {
+  font-size: 1.25rem;
+}
+
+.modal-body h4 {
+  font-size: 1.1rem;
+}
+
+.tab-content {
+  margin-top: 1rem;
 }
 
 /* --- Enhanced Inputs Styling --- */
