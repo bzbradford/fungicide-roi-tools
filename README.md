@@ -49,9 +49,9 @@ Thousands of simulations were performed to estimate the expected ROI of fungicid
 
 ### Credits
 
-- **Project leads:** Damon Smith, Department of Plant Pathology, University of Wisconsin-Madison; Daren Mueller, Iowa State; Kiersten Wise, Iowa State.
+- **Project leads:** Damon Smith, Department of Plant Pathology, University of Wisconsin-Madison; Daren Mueller, Department of Plant Pathology, Entomology and Microbiology, Iowa State; Kiersten Wise, Department of Plant Pathology, University of Kentucky.
 - **Data compilation and economic analysis:** Maria Oros, Data Science Institute, University of Wisconsin-Madison, with contributions from Isaac Baumann and Jason Lo, also at DSI.
-- **App development:** Initial individual calculators developed by Maria Oros, current unified app developed by Ben Bradford, UW-Madison Department of Entomology.
+- **App development:** Initial calculators developed by Maria Oros, current app developed by Ben Bradford, UW-Madison Department of Entomology.
 - Additional contributors are listed within each tool.
 
 ### Funding sources

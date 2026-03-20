@@ -11,9 +11,9 @@ id = '531a7973-1fe6-44d7-b67c-3e4536792f8d'
 dashboard_url = 'https://connect.doit.wisc.edu/connect/#/apps/531a7973-1fe6-44d7-b67c-3e4536792f8d'
 direct_url = 'https://connect.doit.wisc.edu/content/531a7973-1fe6-44d7-b67c-3e4536792f8d/'
 logs_url = 'https://connect.doit.wisc.edu/connect/#/apps/531a7973-1fe6-44d7-b67c-3e4536792f8d/logs'
-deployed_at = '2026-03-08T13:28:07-05:00'
-bundle_id = '4623'
-bundle_url = 'https://connect.doit.wisc.edu/__api__/v1/content/531a7973-1fe6-44d7-b67c-3e4536792f8d/bundles/4623/download'
+deployed_at = '2026-03-20T07:26:26-05:00'
+bundle_id = '4632'
+bundle_url = 'https://connect.doit.wisc.edu/__api__/v1/content/531a7973-1fe6-44d7-b67c-3e4536792f8d/bundles/4632/download'
 files = [
   '.posit/publish/Fungicide ROI Tools-IT5V.toml',
   '.posit/publish/deployments/deployment-B6SC.toml',
