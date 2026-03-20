@@ -14,7 +14,7 @@ This calculator shares results from university alfalfa fungicide trials conducte
 
 ### About the Data
 
-Data available in the calculator are from university uniform soybean white mold fungicide trials conducted across Wisconsin between 2011 and 2020. Numerous alfalfa foliar diseases are represented in this data.
+Data available in the calculator are from university alfalfa trials conducted across Wisconsin between 2011 and 2020. Numerous foliar diseases causing defoliation are represented in this data and were used to calculate the efficacy of different fungicide programs.
 
 Protocols for testing fungicides developed by the Alfalfa Pest Management Working Group.
 
