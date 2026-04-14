@@ -27,6 +27,7 @@ ui <- page_navbar(
     ),
     tags$link(rel = "stylesheet", type = "text/css", href = "style.css"),
     tags$script(src = "script.js"),
+    includeHTML("www/google-analytics.html"),
   ),
 
   # Corn
